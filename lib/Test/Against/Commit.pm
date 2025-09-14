@@ -222,6 +222,7 @@ directories thereunder:  F<testing/> and F<results/>.
 
     my $self = Test::Against::Commit->new( {
         application_dir => '/path/to/application',
+        commit => 'blead',
     } );
 
 Takes a hash reference with the following elements:
@@ -232,6 +233,12 @@ Takes a hash reference with the following elements:
 
 String holding path to the directory which will serve as the top level for your application.
 
+=item * C<commit>
+
+String holding a name for the specific F<perl> executable against which you
+will be attempting to install CPAN modules.  This could be a F<git> commit ID
+(SHA), a F<git> tag or the name of a F<git> branch.
+
 =back
 
 =item * Return Value
@@ -240,11 +247,10 @@ Test::Against::Commit object.
 
 =item * Comment
 
-What the constructor needs to do:
-
-* Confirm existence of application_dir.
-* Confirm existence of subdirs testing and result.
-
+The constructor merely verifies the existence of certain directories on your
+machine.  It does not install a F<perl> executable.  That is the user's
+responsibility.  The user will subsequently have to call the
+C<prepare_testing_directory()> to be fully ready to test.
 
 =back
 
@@ -269,7 +275,6 @@ sub new {
         my $k = $dir . '_dir';
         $verified{$k} = $fdir;
     }
-    #pp \%verified;
 
     my $data;
     for my $k (keys %{$args}) {
@@ -279,7 +284,6 @@ sub new {
         $data->{$k} = $verified{$k};
     }
 
-    #pp $data;
     return bless $data, $class;
 }
 
@@ -289,24 +293,24 @@ sub new {
 
 =item * Purpose
 
-3 methods which simply return the path to relevant directories:
+Three methods which simply return the path to relevant directories:
 
 =over 4
 
-=item * Application directory
+=item * application directory
 
 The top-level directory for all code and data implemented by
 Test-Against-Commit.  It will typically hold 2 subdirectories: C<testing> and
 C<results>, described below.
 
-=item * Testing directory
+=item * testing directory
 
 A directory which holds one or more subdirectories, each of which contains an
 installation of a perl executable.  That installation will start off with
 C<bin/> and C<lib/> subdirectories and C<./bin/perl -Ilib -v> will be called
 to demonstrate the presence of a viable F<perl>.
 
-=item * Results directory
+=item * results directory
 
 The directory under which all data created by runs of programs using
 Test::Against::Commit will be placed.  This will include data in JSON and
@@ -370,7 +374,9 @@ String holding a F<git> commit ID, tag or branch name.
 =item * Comment
 
 Since C<commit> is one of the key-value pairs we are handing to C<new()>, this
-method essentially just gives us back what we already told it.  However, we will use it internally later to derive the path to the installed F<perl> against which we are trying to install modules.
+method essentially just gives us back what we already told it.  However, we
+will use it internally later to derive the path to the installed F<perl>
+against which we are trying to install modules.
 
 TK:  What about when we're building from a tarball?
 
@@ -410,26 +416,6 @@ Later:
 
 =cut
 
-sub get_bin_dir {
-    my $self = shift;
-    if (! defined $self->{bin_dir}) {
-        croak "bin directory has not yet been defined; have you installed perl?";
-    }
-    else {
-        return $self->{bin_dir};
-    }
-}
-
-sub get_lib_dir {
-    my $self = shift;
-    if (! defined $self->{lib_dir}) {
-        croak "lib directory has not yet been defined; have you installed perl?";
-    }
-    else {
-        return $self->{lib_dir};
-    }
-}
-
 sub prepare_testing_directory {
     my $self = shift;
 
@@ -461,6 +447,72 @@ sub prepare_testing_directory {
     # See: +44 /home/jkeenan/gitwork/test-against-dev/lib/Test/Against/Dev.pm
 
     return 1;
+}
+
+=head2 C<get_commit_dir() <get_bin_dir() get_lib_dir()>
+
+=over 4
+
+=item * Purpose
+
+Three methods which simply return the path to relevant directories:
+
+=over 4
+
+=item * commit directory
+
+A directory underneath C<testing> holding F<perl> installation.  This
+directory will start off life with two subdirectories, C<bin> and C<lib>.
+
+=item * bin directory
+
+The directory underneath an individual C<commit> directory holding installed
+executables such as F<perl>, F<cpan> and F<cpanm>.
+
+=item * lib directory
+
+The directory underneath an individual C<commit> directory holding the
+libraries supporting the installed executables found in C<bin>.
+
+=back
+
+=item * Arguments
+
+    $bin_dir = $self->get_bin_dir();
+
+    $lib_dir = $self->get_lib_dir();
+
+=item * Return Value
+
+String holding a path to the named directory.
+
+=item * Comment
+
+If the F<perl> executable has not yet been installed, these methods will
+thrown exceptions.
+
+=back
+
+=cut
+
+sub get_bin_dir {
+    my $self = shift;
+    if (! defined $self->{bin_dir}) {
+        croak "bin directory has not yet been defined; have you installed perl?";
+    }
+    else {
+        return $self->{bin_dir};
+    }
+}
+
+sub get_lib_dir {
+    my $self = shift;
+    if (! defined $self->{lib_dir}) {
+        croak "lib directory has not yet been defined; have you installed perl?";
+    }
+    else {
+        return $self->{lib_dir};
+    }
 }
 
 #=head2 C<fetch_cpanm()>
