@@ -10,8 +10,8 @@ use ExtUtils::MakeMaker;
 my $mm_ver = ExtUtils::MakeMaker->VERSION;
 
 WriteMakefile(
-    NAME         => 'Test::Against::Dev',
-    VERSION_FROM => 'lib/Test/Against/Dev.pm',
+    NAME         => 'Test::Against::Commit',
+    VERSION_FROM => 'lib/Test/Against/Commit.pm',
     AUTHOR       => 'James E Keenan (jkeenan@cpan.org)',
     ABSTRACT     => 'Test CPAN modules against Perl dev releases',
     CONFIGURE_REQUIRES => {
@@ -45,14 +45,14 @@ WriteMakefile(
         'meta-spec' => { version => 2 },
         dynamic_config => 1,
         resources => {
-            homepage => 'http://thenceforward.net/perl/modules/Test-Against-Dev/',
+            homepage => 'http://thenceforward.net/perl/modules/Test-Against-Commit/',
             repository => {
                 url => 'https://github.com/jkeenan/test-against-dev.git',
                 web => 'https://github.com/jkeenan/test-against-dev',
                 type => 'git',
             },
             bugtracker => {
-                web => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Test-Against-Dev',
+                web => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Test-Against-Commit',
             },
         },
     })),
