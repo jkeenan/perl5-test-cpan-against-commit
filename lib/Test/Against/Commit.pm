@@ -250,8 +250,6 @@ What the constructor needs to do:
 
 =cut
 
-#our $PERL_VERSION_PATTERN = qr/^perl-5\.\d+\.\d{1,2}(?:-RC\d{1,2})?$/;
-
 sub new {
     my ($class, $args) = @_;
 
@@ -281,7 +279,7 @@ sub new {
         $data->{$k} = $verified{$k};
     }
 
-    pp $data;
+    #pp $data;
     return bless $data, $class;
 }
 
@@ -412,8 +410,42 @@ Later:
 
 =cut
 
+sub get_bin_dir {
+    my $self = shift;
+    return $self->{bin_dir};
+}
+
+sub get_lib_dir {
+    my $self = shift;
+    return $self->{lib_dir};
+}
+
 sub prepare_testing_directory {
     my $self = shift;
+
+    my $commit_dir = File::Spec->catdir($self->{testing_dir}, $self->{commit});
+    if (-d $commit_dir) {
+        $self->{commit_dir} = $commit_dir;
+    }
+    else {
+        croak "Could not locate $commit_dir; have you built and installed a perl executable?";
+    }
+    for my $dir (qw| bin lib|) {
+        my $subdir = File::Spec->catdir($self->{commit_dir}, $dir);
+        if (-d $subdir) {
+            my $this = $dir . '_dir';
+            $self->{$this} = $subdir;
+        }
+        else {
+            croak "Could not locate $subdir; have you built and installed a perl executable?";
+        }
+    }
+    my $thisperl = File::Spec->catfile($self->get_bin_dir, 'perl');
+    my $libdir = $self->get_lib_dir();
+    my $invoke = "$thisperl -I$libdir";
+    # TODO:  Use Capture::Tiny to capture the output of perl -v
+    my $rv = system(qq{$invoke -v | head -n 2 | tail -n 1})
+        and croak "Could not run perl executable at $thisperl";
 
     return 1;
 }
