@@ -25,6 +25,7 @@ Test::Against::Commit - Test CPAN modules against Perl dev releases
 
     my $self = Test::Against::Commit->new( {
         application_dir => '/path/to/application',
+        commit          => <commit_ID_tag_or_branch>,
     } );
 
     my $this_cpanm = $self->fetch_cpanm( { verbose => 1 } );
@@ -243,9 +244,7 @@ What the constructor needs to do:
 
 * Confirm existence of application_dir.
 * Confirm existence of subdirs testing and result.
-* Confirm existence of perl installation directory, perl therein, bin and lib subdirs.
-* Test for presence of bin/cpanm; install as needed.
-* Test for existence of .cpanm and .cpanreporter subdirs; create if needed.
+
 
 =back
 
@@ -275,7 +274,6 @@ sub new {
     #pp \%verified;
 
     my $data;
-    #for my $k (keys %{$args}, keys %verified) {
     for my $k (keys %{$args}) {
         $data->{$k} = $args->{$k};
     }
@@ -283,206 +281,143 @@ sub new {
         $data->{$k} = $verified{$k};
     }
 
-#    for my $dir (qw| testing results |) {
-#        my $fdir = File::Spec->catdir($data->{application_dir}, $dir);
-#        unless (-d $fdir) { make_path($fdir, { mode => 0755 }); }
-#        croak "Could not locate $fdir" unless (-d $fdir);
-#        $data->{"${dir}_dir"} = $fdir;
-#    }
-#
-#    $data->{perl_version_pattern} = $PERL_VERSION_PATTERN;
-
     pp $data;
     return bless $data, $class;
 }
 
-#sub get_application_dir {
-#    my $self = shift;
-#    return $self->{application_dir};
-#}
-#
-#sub get_testing_dir {
-#    my $self = shift;
-#    return $self->{testing_dir};
-#}
-#
-#sub get_results_dir {
-#    my $self = shift;
-#    return $self->{results_dir};
-#}
-#
-#=head2 C<perform_tarball_download()>
-#
-#=over 4
-#
-#=item * Purpose
-#
-#=item * Arguments
-#
-#    ($tarball_path, $work_dir) = $self->perform_tarball_download( {
-#        host                => 'ftp.funet.fi',
-#        hostdir             => /pub/languages/perl/CPAN/src/5.0,
-#        perl_version        => 'perl-5.43.6',
-#        compression         => 'gz',
-#        work_dir            => "~/tmp/Downloads",
-#        verbose             => 1,
-#        mock                => 0,
-#    } );
-#
-#Hash reference with the following elements:
-#
-#=over 4
-#
-#=item * C<host>
-#
-#String.  The FTP mirror from which you wish to download a tarball of a Perl
-#release.  Required.
-#
-#=item * C<hostdir>
-#
-#String.  The directory on the FTP mirror specified by C<host> in which the
-#tarball is located.  Required.
-#
-#=item * C<perl_version>
-#
-#String denoting a Perl release.  The string must start with C<perl->, followed
-#by the major version, minor version and patch version delimited by periods.
-#The major version is always C<5>.  Required.
-#
-#=item * C<compression>
-#
-#String denoting the compression format of the tarball you wish to download.
-#Eligible compression formats are C<gz>, C<bz2> and C<bz2>.  Required.
-#
-#Note that not all compression formats are available for all tarballs on our
-#FTP mirrors and that the compression formats offered may change over time.
-#
-#Note further that C<gz> is currently the recommended format, as the other
-#methods have not been thorougly tested.
-#
-#=item * C<work_dir>
-#
-#String holding absolute path to the directory in which the work of configuring
-#and building the new F<perl> will be performed.  Optional; if not provided a
-#temporary directory created via C<File::Temp::tempdir()> will be used.
-#
-#=item * C<verbose>
-#
-#Extra information provided on STDOUT.  Optional; defaults to being off;
-#provide a Perl-true value to turn it on.  Scope is limited to this method.
-#
-#=item * C<mock>
-#
-#Display the expected results of the download on STDOUT, but don't actually do
-#it.  Optional; defaults to being off; provide a Perl-true value to turn it on.
-#Any program using this option will terminate with a non-zero status once the
-#results have been displayed.
-#
-#=back
-#
-#=item * Return Value
-#
-#Returns a list of two elements:
-#
-#=over 4
-#
-#=item * Tarball path
-#
-#String holding absolute path to the tarball once downloaded.
-#
-#=item * Work directory
-#
-#String holding path of directory in which work of configuring and building
-#F<perl> will be performed.  (This is probably only useful if you want to see
-#the path to the temporary directory.  It will be uninitialized if C<mock> is
-#turned on.)
-#
-#=back
-#
-#=item * Comment
-#
-#The method guarantees the existence of a directory whose name will be the
-#value of the C<perl_version> argument and which will be found underneath the
-#F<testing> directory (discussed in C<new()> above).  This "release directory"
-#-- accessible by calling C<$self->get_release_dir()> -- will be the directory
-#below which a new F<perl> will be installed.
-#
-#=back
-#
-#=cut
-#
-#sub perform_tarball_download {
-#    my ($self, $args) = @_;
-#    croak "perform_tarball_download: Must supply hash ref as argument"
-#        unless ref($args) eq 'HASH';
-#    my $verbose = delete $args->{verbose} || '';
-#    my $mock = delete $args->{mock} || '';
-#    my %eligible_args = map { $_ => 1 } ( qw|
-#        host hostdir perl_version compression work_dir
-#    | );
-#    for my $k (keys %$args) {
-#        croak "perform_tarball_download: '$k' is not a valid element"
-#            unless $eligible_args{$k};
-#    }
-#    croak "perform_tarball_download: '$args->{perl_version}' does not conform to pattern"
-#        unless $args->{perl_version} =~ m/$self->{perl_version_pattern}/;
-#
-#    my %eligible_compressions = map { $_ => 1 } ( qw| gz bz2 xz | );
-#    croak "perform_tarball_download: '$args->{compression}' is not a valid compression format"
-#        unless $eligible_compressions{$args->{compression}};
-#
-#    croak "Could not locate '$args->{work_dir}' for purpose of downloading tarball and building perl"
-#        if (exists $args->{work_dir} and (! -d $args->{work_dir}));
-#
-#    # host, hostdir, compression are only used within the scope of this
-#    # method.  Hence, they don't need to be inserted into the object.
-#
-#    for my $k ( qw| perl_version work_dir | ) {
-#        $self->{$k} = $args->{$k};
-#    }
-#
-#    my $this_tarball = "$self->{perl_version}.tar.$args->{compression}";
-#
-#    my $this_release_dir = File::Spec->catdir($self->get_testing_dir(), $self->{perl_version});
-#    unless (-d $this_release_dir) { make_path($this_release_dir, { mode => 0755 }); }
-#    croak "Could not locate $this_release_dir" unless (-d $this_release_dir);
-#    $self->{release_dir} = $this_release_dir;
-#
-#    my $ftpobj = Perl::Download::FTP->new( {
-#        host        => $args->{host},
-#        dir         => $args->{hostdir},
-#        Passive     => 1,
-#        verbose     => $verbose,
-#    } );
-#
-#    unless ($mock) {
-#        if (! $self->{work_dir}) {
-#            $self->{restore_to_dir} = cwd();
-#            $self->{work_dir} = tempdir(CLEANUP => 1);
-#        }
-#        if ($verbose) {
-#            say "Beginning FTP download (this will take a few minutes)";
-#            say "Perl configure-build-install cycle will be performed in $self->{work_dir}";
-#        }
-#        my $tarball_path = $ftpobj->get_specific_release( {
-#            release         => $this_tarball,
-#            path            => $self->{work_dir},
-#        } );
-#        unless (-f $tarball_path) {
-#            croak "Tarball $tarball_path not found: $!";
-#        }
-#        else {
-#            say "Path to tarball is $tarball_path" if $verbose;
-#            $self->{tarball_path} = $tarball_path;
-#            return ($tarball_path, $self->{work_dir});
-#        }
-#    }
-#    else {
-#        say "Mocking; not really attempting FTP download" if $verbose;
-#        return 1;
-#    }
-#}
-#
+=head2 C<get_application_dir() get_testing_dir() get_results_dir()>
+
+=over 4
+
+=item * Purpose
+
+3 methods which simply return the path to relevant directories:
+
+=over 4
+
+=item * Application directory
+
+The top-level directory for all code and data implemented by
+Test-Against-Commit.  It will typically hold 2 subdirectories: C<testing> and
+C<results>, described below.
+
+=item * Testing directory
+
+A directory which holds one or more subdirectories, each of which contains an
+installation of a perl executable.  That installation will start off with
+C<bin/> and C<lib/> subdirectories and C<./bin/perl -Ilib -v> will be called
+to demonstrate the presence of a viable F<perl>.
+
+=item * Results directory
+
+The directory under which all data created by runs of programs using
+Test::Against::Commit will be placed.  This will include data in JSON and
+pipe-separated-value (PSV) formats.
+
+=back
+
+=item * Arguments
+
+    $application_dir = $self->get_application_dir();
+
+    $testing_dir = $self->get_testing_dir();
+
+    $results_dir = $self->get_results_dir();
+
+=item * Return Value
+
+String holding a path to the named directory.
+
+=item * Comment
+
+TK
+
+=back
+
+=cut
+
+sub get_application_dir {
+    my $self = shift;
+    return $self->{application_dir};
+}
+
+sub get_testing_dir {
+    my $self = shift;
+    return $self->{testing_dir};
+}
+
+sub get_results_dir {
+    my $self = shift;
+    return $self->{results_dir};
+}
+
+=head2 C<get_commit()>
+
+=over 4
+
+=item * Purpose
+
+Each F<perl> installed underneath C<testing_dir> needs a unique name.  If we
+build this F<perl> from a F<git> checkout, this should be one of the commit ID
+(SHA), tag or branch name of the checkout.
+
+=item * Arguments
+
+    my $commit = $self->get_commit();
+
+=item * Return Value
+
+String holding a F<git> commit ID, tag or branch name.
+
+=item * Comment
+
+Since C<commit> is one of the key-value pairs we are handing to C<new()>, this
+method essentially just gives us back what we already told it.  However, we will use it internally later to derive the path to the installed F<perl> against which we are trying to install modules.
+
+TK:  What about when we're building from a tarball?
+
+=back
+
+=cut
+
+sub get_commit {
+    my $self = shift;
+    return $self->{commit};
+}
+
+=pod
+
+So far the object just holds this (verified) data.
+
+{
+  application_dir => "/tmp/h4dDUN9MKv",
+  commit          => "blead",
+  results_dir     => "/tmp/h4dDUN9MKv/results",
+  testing_dir     => "/tmp/h4dDUN9MKv/testing",
+}
+
+We need to verify that there is a full 'commitdir' underneath testing_dir;
+that underneath that there are bin/ and lib/ and that we can call ./bin/perl.
+We then need to check for presence of ./bin/cpanm; if not found, install it
+via ./bin/cpan.  In the commitdir we need to need to confirm the existence of
+a .cpanm/ directory and we need to create a .cpanreporter/ directory.
+
+Only then will we be able to assemble a list of modules to be tested and use a
+run_cpanm method on them.
+
+Later: 
+* Confirm existence of perl installation directory, perl therein, bin and lib subdirs.
+* Test for presence of bin/cpanm; install as needed.
+* Test for existence of .cpanm and .cpanreporter subdirs; create if needed.
+
+=cut
+
+sub prepare_testing_directory {
+    my $self = shift;
+
+    return 1;
+}
+
 #sub get_release_dir {
 #    my $self = shift;
 #    if (! defined $self->{release_dir}) {

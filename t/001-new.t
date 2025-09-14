@@ -16,7 +16,6 @@ my $tdir = tempdir(CLEANUP => 1);
 my $self;
 
 # Error conditions for new() which can be tested by non-author users
-# See xt/ for author-only tests
 {
     local $@;
     eval { $self = Test::Against::Commit->new([]); };
@@ -57,13 +56,6 @@ my $self;
         "new: Got expected error message; 'application_dir' not found");
 }
 
-#    for my $dir (qw| testing results |) {
-#        my $fdir = File::Spec->catdir($data->{application_dir}, $dir);
-#        unless (-d $fdir) { make_path($fdir, { mode => 0755 }); }
-#        croak "Could not locate $fdir" unless (-d $fdir);
-#        $data->{"${dir}_dir"} = $fdir;
-#    }
-
 {
     my $application_dir = $tdir;
     my $commit = 'blead';
@@ -85,10 +77,24 @@ my $self;
 
     $self = Test::Against::Commit->new( {
         application_dir         => $tdir,
-        commit                  => 'blead',
+        commit                  => $commit,
     } );
     ok($self, "new() returned true value");
     isa_ok ($self, 'Test::Against::Commit');
+
+    my $top_dir = $self->get_application_dir;
+    is($top_dir, $tdir, "Located top-level directory $top_dir");
+
+    for my $dir ( qw| testing results | ) {
+        my $fdir = File::Spec->catdir($top_dir, $dir);
+        ok(-d $fdir, "Located $fdir");
+    }
+    my $testing_dir = $self->get_testing_dir;
+    my $results_dir = $self->get_results_dir;
+    ok(-d $testing_dir, "Got testing directory: $testing_dir");
+    ok(-d $results_dir, "Got results directory: $results_dir");
+
+    is($self->get_commit(), $commit, "Got expected commit");
 }
 
 #$self = Test::Against::Commit->new( {
@@ -96,18 +102,6 @@ my $self;
 #    commit                  => 'blead',
 #} );
 #isa_ok ($self, 'Test::Against::Commit');
-#
-#my $top_dir = $self->get_application_dir;
-#is($top_dir, $tdir, "Located top-level directory $top_dir");
-#
-#for my $dir ( qw| testing results | ) {
-#    my $fdir = File::Spec->catdir($top_dir, $dir);
-#    ok(-d $fdir, "Located $fdir");
-#}
-#my $testing_dir = $self->get_testing_dir;
-#my $results_dir = $self->get_results_dir;
-#ok(-d $testing_dir, "Got testing directory: $testing_dir");
-#ok(-d $results_dir, "Got results directory: $results_dir");
 #
 #can_ok('Test::Against::Commit', 'configure_build_install_perl');
 #can_ok('Test::Against::Commit', 'fetch_cpanm');
