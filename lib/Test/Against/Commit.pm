@@ -565,7 +565,7 @@ F<perl>.
 
 =item * Arguments
 
-    my $this_cpanm = $self->fetch_cpanm( { verbose => 1 } );
+    my $rv = $self->fetch_cpanm( { verbose => 1 } );
 
 Hash reference with these elements:
 
