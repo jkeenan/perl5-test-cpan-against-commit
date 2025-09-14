@@ -4,8 +4,11 @@ use strict;
 use warnings;
 
 use Test::More;
+use Carp;
+use File::Path ( qw| make_path | );
+use File::Spec;
 use File::Temp ( qw| tempdir |);
-#use Data::Dump ( qw| dd pp | );
+use Data::Dump ( qw| dd pp | );
 
 BEGIN { use_ok( 'Test::Against::Commit' ); }
 
@@ -50,12 +53,47 @@ my $self;
            commit => 'blead',
        });
     };
-    like($@, qr/Could not locate $phony_dir/,
+    like($@, qr/Could not locate application directory $phony_dir/,
         "new: Got expected error message; 'application_dir' not found");
+}
+
+#    for my $dir (qw| testing results |) {
+#        my $fdir = File::Spec->catdir($data->{application_dir}, $dir);
+#        unless (-d $fdir) { make_path($fdir, { mode => 0755 }); }
+#        croak "Could not locate $fdir" unless (-d $fdir);
+#        $data->{"${dir}_dir"} = $fdir;
+#    }
+
+{
+    my $application_dir = $tdir;
+    my $commit = 'blead';
+    my %verified = ();
+    for my $dir (qw| testing results |) {
+        my $fdir = File::Spec->catdir($application_dir, $dir);
+        make_path($fdir, { mode => 0755 })
+            or croak "Unable to create $fdir for testing";
+        $verified{$dir} = $fdir;
+    }
+    my $commitdir = File::Spec->catdir($verified{testing}, $commit);
+    make_path($commitdir, { mode => 0755 })
+            or croak "Unable to create $commitdir for testing";
+    $verified{commit} = $commitdir;
+    #pp \%verified;
+    for my $k (sort keys %verified) {
+        ok(-d $verified{$k}, "Was able to create directory $verified{$k}");
+    }
+
+    $self = Test::Against::Commit->new( {
+        application_dir         => $tdir,
+        commit                  => 'blead',
+    } );
+    ok($self, "new() returned true value");
+    isa_ok ($self, 'Test::Against::Commit');
 }
 
 #$self = Test::Against::Commit->new( {
 #    application_dir         => $tdir,
+#    commit                  => 'blead',
 #} );
 #isa_ok ($self, 'Test::Against::Commit');
 #

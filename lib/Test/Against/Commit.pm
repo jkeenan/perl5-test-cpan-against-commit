@@ -262,19 +262,25 @@ sub new {
         unless $args->{application_dir};
     croak "Hash ref must contain 'commit' element"
         unless $args->{commit};
-    croak "Could not locate $args->{application_dir}"
+    croak "Could not locate application directory $args->{application_dir}"
         unless (-d $args->{application_dir});
-    croak "Could not locate $args->{commit}"
-        unless (-d $args->{commit});
 
+    my %verified = ();
     for my $dir (qw| testing results |) {
         my $fdir = File::Spec->catdir($args->{application_dir}, $dir);
-        croak "Could not locate $fdir" unless (-d $fdir);
+        croak "Could not locate $dir directory $fdir" unless (-d $fdir);
+        my $k = $dir . '_dir';
+        $verified{$k} = $fdir;
     }
+    #pp \%verified;
 
     my $data;
+    #for my $k (keys %{$args}, keys %verified) {
     for my $k (keys %{$args}) {
         $data->{$k} = $args->{$k};
+    }
+    for my $k (keys %verified) {
+        $data->{$k} = $verified{$k};
     }
 
 #    for my $dir (qw| testing results |) {
@@ -286,6 +292,7 @@ sub new {
 #
 #    $data->{perl_version_pattern} = $PERL_VERSION_PATTERN;
 
+    pp $data;
     return bless $data, $class;
 }
 
