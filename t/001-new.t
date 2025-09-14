@@ -95,6 +95,20 @@ my $self;
     ok(-d $results_dir, "Got results directory: $results_dir");
 
     is($self->get_commit(), $commit, "Got expected commit");
+
+    {
+        local $@;
+        eval { $self->get_bin_dir(); };
+        like($@, qr/bin directory has not yet been defined/,
+            "Got exception for premature get_bin_dir()");
+    }
+
+    {
+        local $@;
+        eval { $self->get_lib_dir(); };
+        like($@, qr/lib directory has not yet been defined/,
+            "Got exception for premature get_lib_dir()");
+    }
 }
 
 #$self = Test::Against::Commit->new( {

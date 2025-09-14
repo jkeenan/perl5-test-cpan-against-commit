@@ -412,12 +412,22 @@ Later:
 
 sub get_bin_dir {
     my $self = shift;
-    return $self->{bin_dir};
+    if (! defined $self->{bin_dir}) {
+        croak "bin directory has not yet been defined; have you installed perl?";
+    }
+    else {
+        return $self->{bin_dir};
+    }
 }
 
 sub get_lib_dir {
     my $self = shift;
-    return $self->{lib_dir};
+    if (! defined $self->{lib_dir}) {
+        croak "lib directory has not yet been defined; have you installed perl?";
+    }
+    else {
+        return $self->{lib_dir};
+    }
 }
 
 sub prepare_testing_directory {
@@ -716,26 +726,6 @@ sub prepare_testing_directory {
 #    }
 #    else {
 #        return $self->{this_perl};
-#    }
-#}
-#
-#sub get_bin_dir {
-#    my $self = shift;
-#    if (! defined $self->{bin_dir}) {
-#        croak "bin directory has not yet been defined; run configure_build_install_perl()";
-#    }
-#    else {
-#        return $self->{bin_dir};
-#    }
-#}
-#
-#sub get_lib_dir {
-#    my $self = shift;
-#    if (! defined $self->{lib_dir}) {
-#        croak "lib directory has not yet been defined; run configure_build_install_perl()";
-#    }
-#    else {
-#        return $self->{lib_dir};
 #    }
 #}
 #
