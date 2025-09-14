@@ -416,6 +416,32 @@ Later:
 
 =cut
 
+=head2 C<prepare_testing_directory>
+
+=over 4
+
+=item * Purpose
+
+Determines whether the F<perl> executable has been installed -- if not, it's
+the user's responsibility to install it -- and whether this application has
+the correct directory structure.
+
+=item * Arguments
+
+    $self->prepare_testing_directory()
+
+=item * Return Value
+
+Returns the Test::Against::Commit object, which now holds additional data.
+
+=item * Comment
+
+TK
+
+=back
+
+=cut
+
 sub prepare_testing_directory {
     my $self = shift;
 
@@ -446,7 +472,7 @@ sub prepare_testing_directory {
     # TODO: Does bin/cpanm exist and work?  If not, install it.
     # See: +44 /home/jkeenan/gitwork/test-against-dev/lib/Test/Against/Dev.pm
 
-    return 1;
+    return $self;
 }
 
 =head2 C<get_commit_dir() <get_bin_dir() get_lib_dir()>
@@ -478,6 +504,8 @@ libraries supporting the installed executables found in C<bin>.
 
 =item * Arguments
 
+    $commit_dir = $self->get_commit_dir();
+
     $bin_dir = $self->get_bin_dir();
 
     $lib_dir = $self->get_lib_dir();
@@ -489,11 +517,21 @@ String holding a path to the named directory.
 =item * Comment
 
 If the F<perl> executable has not yet been installed, these methods will
-thrown exceptions.
+throw exceptions.
 
 =back
 
 =cut
+
+sub get_commit_dir {
+    my $self = shift;
+    if (! defined $self->{commit_dir}) {
+        croak "commit directory has not yet been defined; have you installed perl?";
+    }
+    else {
+        return $self->{commit_dir};
+    }
+}
 
 sub get_bin_dir {
     my $self = shift;
@@ -515,111 +553,105 @@ sub get_lib_dir {
     }
 }
 
-#=head2 C<fetch_cpanm()>
-#
-#=over 4
-#
-#=item * Purpose
-#
-#Fetch the fatpacked F<cpanm> executable and install it against the newly
-#installed F<perl>.
-#
-#=item * Arguments
-#
-#    my $this_cpanm = $self->fetch_cpanm( { verbose => 1 } );
-#
-#Hash reference with these elements:
-#
-#=over 4
-#
-#=item * C<uri>
-#
-#String holding URI from which F<cpanm> will be downloaded.  Optional; defaults
-#to L<http://cpansearch.perl.org/src/MIYAGAWA/App-cpanminus-1.7043/bin/cpanm>.
-#
-#=item * C<verbose>
-#
-#Extra information provided on STDOUT.  Optional; defaults to being off;
-#provide a Perl-true value to turn it on.  Scope is limited to this method.
-#
-#=back
-#
-#=item * Return Value
-#
-#String holding the absolute path to the newly installed F<cpanm> executable.
-#
-#=item * Comment
-#
-#The executable's location can subsequently be accessed by calling
-#C<$self->get_this_cpanm()>.  The method also guarantees the existence of a
-#F<.cpanm> directory underneath the release directory.  This directory can
-#subsequently be accessed by calling C<$self->get_cpanm_dir()>.
-#
-#=back
-#
-#=cut
-#
-#sub fetch_cpanm {
-#    my ($self, $args) = @_;
-#    croak "fetch_cpanm: Must supply hash ref as argument"
-#        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
-#    my $verbose = delete $args->{verbose} || '';
-#    my $uri = (exists $args->{uri} and length $args->{uri})
-#        ? $args->{uri}
-#        : 'http://cpansearch.perl.org/src/MIYAGAWA/App-cpanminus-1.7043/bin/cpanm';
-#
-#    my $cpanm_dir = File::Spec->catdir($self->get_release_dir(), '.cpanm');
-#    unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
-#    croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
-#    $self->{cpanm_dir} = $cpanm_dir;
-#
-#    my $bin_dir = $self->get_bin_dir();
-#    my $this_cpanm = File::Spec->catfile($bin_dir, 'cpanm');
-#    # If cpanm is already installed in bin_dir, we don't need to try to
-#    # reinstall it.
-#    if (-f $this_cpanm) {
-#        say "'$this_cpanm' already installed" if $verbose;
-#    }
-#    else {
-#       say "Fetching 'cpanm' from $uri" if $verbose;
-#       my $ff = File::Fetch->new(uri => $uri)->fetch(to => $bin_dir)
-#           or croak "Unable to fetch 'cpanm' from $uri";
-#    }
-#    my $cnt = chmod 0755, $this_cpanm;
-#    croak "Unable to make '$this_cpanm' executable" unless $cnt;
-#    $self->{this_cpanm} = $this_cpanm;
-#}
-#
-#sub get_this_cpanm {
-#    my $self = shift;
-#    if (! defined $self->{this_cpanm}) {
-#        croak "cpanm has not yet been installed against the 'perl' being tested; run fetch_cpanm()";
-#    }
-#    else {
-#        return $self->{this_cpanm};
-#    }
-#}
-#
-#sub get_cpanm_dir {
-#    my $self = shift;
-#    if (! defined $self->{cpanm_dir}) {
-#        croak "cpanm directory has not yet been defined; run fetch_cpanm()";
-#    }
-#    else {
-#        return $self->{cpanm_dir};
-#    }
-#}
+=head2 C<fetch_cpanm() get_this_cpanm() get_cpanm_dir()>
 
-#sub get_release_dir {
-#    my $self = shift;
-#    if (! defined $self->{release_dir}) {
-#        croak "release directory has not yet been defined; run perform_tarball_download()";
-#    }
-#    else {
-#        return $self->{release_dir};
-#    }
-#}
-#
+=over 4
+
+=item * Purpose
+
+Determine whether F<cpanm> has been installed.  If it has not, fetch the
+fatpacked F<cpanm> executable and install it against the newly installed
+F<perl>.
+
+=item * Arguments
+
+    my $this_cpanm = $self->fetch_cpanm( { verbose => 1 } );
+
+Hash reference with these elements:
+
+=over 4
+
+=item * C<uri>
+
+String holding URI from which F<cpanm> will be downloaded.  Optional; defaults
+to L<http://cpansearch.perl.org/src/MIYAGAWA/App-cpanminus-1.7043/bin/cpanm>.
+
+=item * C<verbose>
+
+Extra information provided on STDOUT.  Optional; defaults to being off;
+provide a Perl-true value to turn it on.  Scope is limited to this method.
+
+=back
+
+=item * Return Value
+
+Returns the Test::Against::Commit object, which now holds additional data.
+
+=item * Comment
+
+The F<cpanm> executable's location can subsequently be accessed by calling
+C<$self->get_this_cpanm()>.  The method also guarantees the existence of a
+F<.cpanm> directory underneath the commit directory, I<i.e.,> side-by-side
+with C<bin> and C<lib>.  This directory can subsequently be accessed by
+calling C<$self->get_cpanm_dir()>.
+
+=back
+
+=cut
+
+sub fetch_cpanm {
+    my ($self, $args) = @_;
+    croak "fetch_cpanm: Must supply hash ref as argument"
+        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
+    my $verbose = delete $args->{verbose} || '';
+    my $uri = (exists $args->{uri} and length $args->{uri})
+        ? $args->{uri}
+        : 'http://cpansearch.perl.org/src/MIYAGAWA/App-cpanminus-1.7043/bin/cpanm';
+
+    my $cpanm_dir = File::Spec->catdir($self->get_commit_dir(), '.cpanm');
+    unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
+    croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
+    $self->{cpanm_dir} = $cpanm_dir;
+
+    my $bin_dir = $self->get_bin_dir();
+    my $this_cpanm = File::Spec->catfile($bin_dir, 'cpanm');
+    # If cpanm is already installed in bin_dir, we don't need to try to
+    # reinstall it.
+    if (-f $this_cpanm) {
+        say "'$this_cpanm' already installed" if $verbose;
+    }
+    else {
+       say "Fetching 'cpanm' from $uri" if $verbose;
+       my $ff = File::Fetch->new(uri => $uri)->fetch(to => $bin_dir)
+           or croak "Unable to fetch 'cpanm' from $uri";
+    }
+    my $cnt = chmod 0755, $this_cpanm;
+    croak "Unable to make '$this_cpanm' executable" unless $cnt;
+    $self->{this_cpanm} = $this_cpanm;
+
+    return $self;
+}
+
+sub get_this_cpanm {
+    my $self = shift;
+    if (! defined $self->{this_cpanm}) {
+        croak "location of cpanm has not yet been defined; run fetch_cpanm()";
+    }
+    else {
+        return $self->{this_cpanm};
+    }
+}
+
+sub get_cpanm_dir {
+    my $self = shift;
+    if (! defined $self->{cpanm_dir}) {
+        croak "cpanm directory has not yet been defined; run fetch_cpanm()";
+    }
+    else {
+        return $self->{cpanm_dir};
+    }
+}
+
 #sub access_configure_command {
 #    my ($self, $arg) = @_;
 #    my $cmd;
@@ -628,7 +660,7 @@ sub get_lib_dir {
 #    }
 #    else {
 #        $cmd = "sh ./Configure -des -Dusedevel -Uversiononly -Dprefix=";
-#        $cmd .= $self->get_release_dir;
+#        $cmd .= $self->get_commit_dir;
 #        $cmd .= " -Dman1dir=none -Dman3dir=none";
 #    }
 #    $self->{configure_command} = $cmd;
@@ -669,9 +701,9 @@ sub get_lib_dir {
 #String holding a shell command to call Perl's F<Configure> program with
 #command-line options.  Optional; will default to:
 #
-#    my $release_dir = $self->get_release_dir();
+#    my $commit_dir = $self->get_commit_dir();
 #
-#    sh ./Configure -des -Dusedevel -Uversiononly -Dprefix=$release_dir \
+#    sh ./Configure -des -Dusedevel -Uversiononly -Dprefix=$commit_dir \
 #        -Dman1dir=none -Dman3dir=none
 #
 #The spelling of the command is subsequently accessible by calling
@@ -754,7 +786,7 @@ sub get_lib_dir {
 #    say "Building and installing perl with '$self->{make_install_command}'" if $verbose;
 #    system(qq|$self->{make_install_command}|)
 #        and croak "Unable to build and install with '$self->{make_install_command}'";
-#    my $rdir = $self->get_release_dir();
+#    my $rdir = $self->get_commit_dir();
 #    my $bin_dir = File::Spec->catdir($rdir, 'bin');
 #    my $lib_dir = File::Spec->catdir($rdir, 'lib');
 #    my $this_perl = File::Spec->catfile($bin_dir, 'perl');
@@ -778,101 +810,6 @@ sub get_lib_dir {
 #    }
 #    else {
 #        return $self->{this_perl};
-#    }
-#}
-#
-#=head2 C<fetch_cpanm()>
-#
-#=over 4
-#
-#=item * Purpose
-#
-#Fetch the fatpacked F<cpanm> executable and install it against the newly
-#installed F<perl>.
-#
-#=item * Arguments
-#
-#    my $this_cpanm = $self->fetch_cpanm( { verbose => 1 } );
-#
-#Hash reference with these elements:
-#
-#=over 4
-#
-#=item * C<uri>
-#
-#String holding URI from which F<cpanm> will be downloaded.  Optional; defaults
-#to L<http://cpansearch.perl.org/src/MIYAGAWA/App-cpanminus-1.7043/bin/cpanm>.
-#
-#=item * C<verbose>
-#
-#Extra information provided on STDOUT.  Optional; defaults to being off;
-#provide a Perl-true value to turn it on.  Scope is limited to this method.
-#
-#=back
-#
-#=item * Return Value
-#
-#String holding the absolute path to the newly installed F<cpanm> executable.
-#
-#=item * Comment
-#
-#The executable's location can subsequently be accessed by calling
-#C<$self->get_this_cpanm()>.  The method also guarantees the existence of a
-#F<.cpanm> directory underneath the release directory.  This directory can
-#subsequently be accessed by calling C<$self->get_cpanm_dir()>.
-#
-#=back
-#
-#=cut
-#
-#sub fetch_cpanm {
-#    my ($self, $args) = @_;
-#    croak "fetch_cpanm: Must supply hash ref as argument"
-#        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
-#    my $verbose = delete $args->{verbose} || '';
-#    my $uri = (exists $args->{uri} and length $args->{uri})
-#        ? $args->{uri}
-#        : 'http://cpansearch.perl.org/src/MIYAGAWA/App-cpanminus-1.7043/bin/cpanm';
-#
-#    my $cpanm_dir = File::Spec->catdir($self->get_release_dir(), '.cpanm');
-#    unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
-#    croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
-#    $self->{cpanm_dir} = $cpanm_dir;
-#
-#    my $bin_dir = $self->get_bin_dir();
-#    my $this_cpanm = File::Spec->catfile($bin_dir, 'cpanm');
-#    # If cpanm is already installed in bin_dir, we don't need to try to
-#    # reinstall it.
-#    if (-f $this_cpanm) {
-#        say "'$this_cpanm' already installed" if $verbose;
-#    }
-#    else {
-#       say "Fetching 'cpanm' from $uri" if $verbose;
-#       my $ff = File::Fetch->new(uri => $uri)->fetch(to => $bin_dir)
-#           or croak "Unable to fetch 'cpanm' from $uri";
-#    }
-#    my $cnt = chmod 0755, $this_cpanm;
-#    croak "Unable to make '$this_cpanm' executable" unless $cnt;
-#    $self->{this_cpanm} = $this_cpanm;
-#}
-#
-#sub get_this_cpanm {
-#    my $self = shift;
-#    if (! defined $self->{this_cpanm}) {
-#        croak "cpanm has not yet been installed against the 'perl' being tested; run fetch_cpanm()";
-#    }
-#    else {
-#        return $self->{this_cpanm};
-#    }
-#}
-#
-#sub get_cpanm_dir {
-#    my $self = shift;
-#    if (! defined $self->{cpanm_dir}) {
-#        croak "cpanm directory has not yet been defined; run fetch_cpanm()";
-#    }
-#    else {
-#        return $self->{cpanm_dir};
 #    }
 #}
 #
@@ -1008,14 +945,14 @@ sub get_lib_dir {
 #        $self->setup_results_directories();
 #    }
 #
-#    my $cpanreporter_dir = File::Spec->catdir($self->get_release_dir(), '.cpanreporter');
+#    my $cpanreporter_dir = File::Spec->catdir($self->get_commit_dir(), '.cpanreporter');
 #    unless (-d $cpanreporter_dir) { make_path($cpanreporter_dir, { mode => 0755 }); }
 #    croak "Could not locate $cpanreporter_dir" unless (-d $cpanreporter_dir);
 #    $self->{cpanreporter_dir} = $cpanreporter_dir;
 #
 #    unless ($self->{cpanm_dir}) {
 #        say "Defining previously undefined cpanm_dir" if $verbose;
-#        my $cpanm_dir = File::Spec->catdir($self->get_release_dir(), '.cpanm');
+#        my $cpanm_dir = File::Spec->catdir($self->get_commit_dir(), '.cpanm');
 #        unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
 #        croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
 #        $self->{cpanm_dir} = $cpanm_dir;
@@ -1396,18 +1333,18 @@ sub get_lib_dir {
 #    croak "Could not locate '$lib_dir'" unless (-d $lib_dir);
 #    croak "'$lib_dir' not writable" unless (-w $lib_dir);
 #
-#    my $release_dir  = File::Spec->catdir(@directories[0 .. ($#directories - 1)]);
-#    croak "'$release_dir' not writable" unless (-w $release_dir);
+#    my $commit_dir  = File::Spec->catdir(@directories[0 .. ($#directories - 1)]);
+#    croak "'$commit_dir' not writable" unless (-w $commit_dir);
 #
 #    my $this_cpanm = File::Spec->catfile($bin_dir, 'cpanm');
 #    croak "Could not locate cpanm executable at '$this_cpanm'"
 #        unless (-x $this_cpanm);
 #
-#    my $cpanm_dir = File::Spec->catdir($release_dir, '.cpanm');
+#    my $cpanm_dir = File::Spec->catdir($commit_dir, '.cpanm');
 #    croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
 #
 #    my %load = (
-#        release_dir     => $release_dir,
+#        commit_dir     => $commit_dir,
 #        bin_dir         => $bin_dir,
 #        lib_dir         => $lib_dir,
 #        this_perl       => $this_perl,

@@ -98,6 +98,13 @@ my $self;
 
     {
         local $@;
+        eval { $self->get_commit_dir(); };
+        like($@, qr/commit directory has not yet been defined/,
+            "Got exception for premature get_commit_dir()");
+    }
+
+    {
+        local $@;
         eval { $self->get_bin_dir(); };
         like($@, qr/bin directory has not yet been defined/,
             "Got exception for premature get_bin_dir()");
@@ -109,15 +116,20 @@ my $self;
         like($@, qr/lib directory has not yet been defined/,
             "Got exception for premature get_lib_dir()");
     }
-}
 
-#$self = Test::Against::Commit->new( {
-#    application_dir         => $tdir,
-#    commit                  => 'blead',
-#} );
-#isa_ok ($self, 'Test::Against::Commit');
-#
-#can_ok('Test::Against::Commit', 'configure_build_install_perl');
-#can_ok('Test::Against::Commit', 'fetch_cpanm');
+    {
+        local $@;
+        eval { $self->get_this_cpanm(); };
+        like($@, qr/location of cpanm has not yet been defined/,
+            "Got exception for premature get_this_cpanm()");
+    }
+
+    {
+        local $@;
+        eval { $self->get_cpanm_dir(); };
+        like($@, qr/cpanm directory has not yet been defined/,
+            "Got exception for premature get_cpanm_dir()");
+    }
+}
 
 done_testing();
