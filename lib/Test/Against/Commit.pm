@@ -1,7 +1,7 @@
-package Test::Against::Dev;
+package Test::Against::Commit;
 use strict;
 use 5.14.0;
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 use Carp;
 use Cwd;
 use File::Basename;
@@ -14,32 +14,18 @@ use CPAN::cpanminus::reporter::RetainReports;
 use Data::Dump ( qw| dd pp | );
 use JSON;
 use Path::Tiny;
-use Perl::Download::FTP;
+#use Perl::Download::FTP;
 use Text::CSV_XS;
 
 =head1 NAME
 
-Test::Against::Dev - Test CPAN modules against Perl dev releases
+Test::Against::Commit - Test CPAN modules against Perl dev releases
 
 =head1 SYNOPSIS
 
-    my $self = Test::Against::Dev->new( {
+    my $self = Test::Against::Commit->new( {
         application_dir => '/path/to/application',
     } );
-
-    my ($tarball_path, $work_dir) = $self->perform_tarball_download( {
-        host                => 'ftp.funet.fi',
-        hostdir             => /pub/languages/perl/CPAN/src/5.0,
-        perl_version        => 'perl-5.27.6',
-        compression         => 'gz',
-        work_dir            => "~/tmp/Downloads",
-        verbose             => 1,
-        mock                => 0,
-    } );
-
-    my $this_perl = $self->configure_build_install_perl({
-        verbose => 1,
-    });
 
     my $this_cpanm = $self->fetch_cpanm( { verbose => 1 } );
 
@@ -54,32 +40,35 @@ Test::Against::Dev - Test CPAN modules against Perl dev releases
 =head2 Who Should Use This Library?
 
 This library should be used by anyone who wishes to assess the impact of
-month-to-month changes in the Perl 5 core distribution on the installability of
-libraries found on the Comprehensive Perl Archive Network (CPAN).
+day-to-day changes in the Perl 5 core distribution on the installability of
+libraries found on the Comprehensive Perl Archive Network (CPAN).  This
+library supersedes the existing CPAN library
+L<Test-Against-Dev|https://metacpan.org/dist/Test-Against-Dev>.
 
-=head2 The Problem to Be Addressed
+=head2 The Problem Addressed by This Library
 
 This problem is typically referred to as B<Blead Breaks CPAN> (or B<BBC> for
-short).  Perl 5 undergoes an annual development cycle characterized by monthly
-releases whose version numbers follow the convention of C<5.27.0>, C<5.27.1>,
-etc., where the middle digits are always odd numbers.  (Annual production
-releases and subsequent maintenance releases have even-numbered middle digits,
-I<e.g.>, C<5.26.0>, C<5.26.1>, etc.)  A monthly development release is
-essentially a roll-up of a month's worth of commits to the master branch known
-as B<blead> (pronounced I<"bleed">).  Changes in the Perl 5 code base have the
-potential to adversely impact the installability of existing CPAN libraries.
-Hence, various individuals have, over the years, developed ways of testing
-those libraries against blead and reporting problems to those people actively
-involved in the ongoing development of the Perl 5 core distribution -- people
-typically referred to as the Perl 5 Porters.
+short).  Perl 5 undergoes an annual development cycle characterized by (i)
+near daily commits to a L<GitHub (GH) repository|https://github.com/Perl/perl5>;
+and (ii) monthly releases whose version numbers follow the convention of
+C<5.43.0>, C<5.43.1>, etc., where the middle digits are always odd numbers.
+(Annual production releases and subsequent maintenance releases have
+even-numbered middle digits, I<e.g.>, C<5.42.0>, C<5.42.1>, etc.)  A monthly
+development release is essentially a roll-up of a month's worth of commits to
+the master branch known as B<blead> (pronounced I<"bleed">).  Changes in the
+Perl 5 code base have the potential to adversely impact the installability of
+existing CPAN libraries.  Hence, various individuals have, over the years,
+developed ways of testing those libraries against blead and reporting problems
+to those people actively involved in the ongoing development of the Perl 5
+core distribution -- people typically referred to as the Perl 5 Porters.
 
 This library is intended as a contribution to those efforts.  It is intended
 to provide a monthly snapshot of the impact of Perl 5 core development on
 important CPAN libraries.
 
-=head2 The Approach Test-Against-Dev Currently Takes and How It May Change in the Future
+=head2 The Approach Test-Against-Commit Takes
 
-Unlike other efforts, F<Test-Against-Dev> does not depend on test reports
+Unlike other efforts, F<Test-Against-Commit> does not depend on test reports
 sent to L<CPANtesters.org|http://www.cpantesters.org/>.  Hence, it should be
 unaffected by any technical problems which that site may face.  As a
 consequence, however, a user of this library must be willing to maintain more
@@ -89,54 +78,47 @@ While this library could, in principle, be used to test the entirety of CPAN,
 it is probably better suited for testing selected subsets of CPAN libraries
 which the user deems important to her individual or organizational needs.
 
-This library is currently focused on monthly development releases of Perl 5.
-It does not directly provide a basis for identifying individual commits to
-blead which adversely impacted particular CPAN libraries.  It "tests against
-dev" more than it "tests against blead" -- hence, the name of the library.
-However, once it has gotten some production experience, it may be extended to,
-say, measure the effect of individual commits to blead on CPAN libraries using
-the previous monthly development release as a baseline.
+Unlike its ancestor F<Test-Against-Dev>, this library is designed to test CPAN
+libraries against either Perl 5 monthly development releases or against
+individual commits to any branch of any GH repository holding the Perl 5 core
+distribution.  This library presumes that the user knows how to configure and
+build a F<perl> executable and how to run the core distribution's test suite.
+This library leaves the configuration, build and installation of a F<perl>
+executable to the user.  The scope of this library's activity begins at the
+point that a F<perl> has been installed on disk, continues through
+installation of libraries needed for testing CPAN libraries against that
+executable to analysis of the results of that testing and presentation of
+those results in a usable form.
 
-This library is currently focused on Perl 5 libraries publicly available on
-CPAN.  In the future, it may be extended to be able to include an
-organization's private libraries as well.
-
-This library is currently focused on blead, the master branch of the Perl 5
-core distribution.  However, it could, in principle, be extended to assess the
-impact on CPAN libraries of code in non-blead ("smoke-me") branches as well.
+While this library is currently focused on Perl 5 libraries publicly available
+on CPAN, it could probably be extended to test an organization's private
+libraries as well.  This functionality, however, has not yet been tested.
 
 =head2 What Is the Result Produced by This Library?
 
-Currently, if you run code built with this library on a monthly basis, you
-will produce an updated version of a pipe-separated-values (PSV) plain-text
-file suitable for opening in a spreadsheet.  The columns in that PSV file will
-be these:
+We will use the term I<run> to describe an instance of testing one or more
+CPAN libraries against a given installed F<perl> and the recording of data
+from that instance of testing.  Our objective is to be able to compare the
+results of different runs against different F<perl> executables.
 
-    dist
-    perl-5.27.0.author
-    perl-5.27.0.distname
-    perl-5.27.0.distversion
-    perl-5.27.0.grade
-    perl-5.27.1.author
-    perl-5.27.1.distname
-    perl-5.27.1.distversion
-    perl-5.27.1.grade
-    ...
-
-So the output for particular CPAN libraries will look like this:
-
-    dist|perl-5.27.0.author|perl-5.27.0.distname|perl-5.27.0.distversion|perl-5.27.0.grade|perl-5.27.1.author|perl-5.27.1.distname|perl-5.27.1.distversion|perl-5.27.1.grade|...
-    Acme-CPANAuthors|ISHIGAKI|Acme-CPANAuthors-0.26|0.26|PASS|ISHIGAKI|Acme-CPANAuthors-0.26|0.26|PASS|...
-    Algorithm-C3|HAARG|Algorithm-C3-0.11|0.11|PASS|HAARG|Algorithm-C3-0.11|0.11|PASS|...
-
-If a particular CPAN library receives a grade of C<PASS> one month and a grade
-of C<FAIL> month, it ought to be inspected for the cause of that breakage.
-Sometimes the change in Perl 5 is wrong and needs to be reverted.  Sometimes
-the change in Perl 5 is correct (or, at least, plausible) but exposes
-sub-optimal code in the CPAN module.  Sometimes the failure is due to external
-conditions, such as a change in a C library on the testing platform.  There's
-no way to write code to figure out which situation -- or mix of situations --
-we are in.  The human user must intervene at this point.
+For example, suppose a person working on the Perl core distribution wants to
+assess the impact of certain changes being proposed in a pull request on set
+of fifty specific CPAN libraries.  The user will first create a benchmark
+F<perl> probably built from a monthly development release, the GH tag
+associated with that release, or the GH commit from which the pull request was
+generated.  The user will use this library to conduct a run against that
+executable.  In the run, each CPAN library will be graded C<PASS>, C<FAIL> (or
+C<NA> for "not applicable").  At a certain point in the course of the pull
+request's development, the user will build a new F<perl> executable and
+conduct a run against that one.  If a particular CPAN library receives a grade
+of C<PASS> during the first run and a grade of C<FAIL> during the next, it
+ought to be inspected for the cause of that breakage.  Sometimes the change in
+Perl 5 is wrong and needs to be reverted.  Sometimes the change in Perl 5 is
+correct (or, at least, plausible) but exposes sub-optimal code in the CPAN
+module.  Sometimes the failure is due to external conditions, such as a change
+in a C library on the testing platform.  There's no way to write code to
+figure out which situation -- or mix of situations -- we are in.  The human
+user must intervene at this point.
 
 =head2 What Preparations Are Needed to Use This Library?
 
@@ -154,7 +136,7 @@ system.
 =item * Perl 5 Configuration
 
 The user must decide on a Perl 5 configuration before using
-F<Test-Against-Dev> on a regular basis and then must refrain from changing
+F<Test-Against-Commit> on a regular basis and then must refrain from changing
 that configuration over the course of the testing period.  Otherwise, the
 results may reflect changes in that configuration rather than changes in Perl
 5 core distribution code or changes in the targeted CPAN libraries.
@@ -175,12 +157,12 @@ testing period.
 B<This is the most important step in preparation to use this library.>
 
 When you use this library, you are in effect saying:  I<Here is a list of CPAN
-modules important enough to me that I don't want to see them start breaking in
+modules important enough to me that I don't want to see them begin to break in
 the course of Perl's annual development cycle.  (If they do break, then the
 Perl 5 Porters and the modules' authors/maintainers must address how to handle
 the breakage.)  To keep track of the problem, I'm going to build F<perl> from
-each monthly release and attempt to install this entire list against that
-F<perl>.>
+a starting point where those modules are working proprerly and assess their
+installability at later points.>
 
 Hence, once you decide to track a certain CPAN library, you should continue to
 include it in your list of modules to be tracked for the balance of the
@@ -203,10 +185,7 @@ depend.  That's a useful definition of importance even if it is not strictly
 true.  Modules "way upstream" feed modules and real-world code "farther
 downstream".  Hence, if Perl 5's development branch changes in a way such that
 "upstream" modules start to fail to configure, build, test and install
-correctly, then we have a potentially serious problem.  The author of this
-library has primarily developed it with the idea that it would be run monthly
-to see what happens with the 1000 "farthest upstream" modules -- the so-called
-"CPAN River Top 1000".
+correctly, then we have a potentially serious problem.
 
 =item * Organizational dependencies
 
@@ -220,60 +199,11 @@ once a month against a Perl development release.
 Certain CPAN libraries get broken relatively frequently.  While this can
 happen because of sub-standard coding practices in those libraries, it more
 often happens because these libraries, in order to do what they want to do,
-reach down deep into the Perl 5 guts and use undocumented or not publicly
-supported features of Perl.
+reach down deep into the Perl 5 guts and use features of the Perl-to-C API.
 
 =back
 
 =back
-
-=head2 Notice of Breaking Change in Version 0.06 (March 20 2018)
-
-If you are first using F<Test-Against-Dev> in version 0.06 released on the
-date above, you may skip this section.
-
-If you used F<Test-Against-Dev> in an ongoing way prior to that version,
-please be advised that the library now creates a slightly different directory
-structure beneath the directory specified by the value of F<application_dir>
-passed to the constructor.  Up through version 0.05, that structure looked
-like this:
-
-    $> find . -maxdepth 4 -type d
-    ./results
-    ./results/perl-5.27.6
-    ./results/perl-5.27.6/storage
-    ./results/perl-5.27.6/analysis
-    ./results/perl-5.27.6/analysis/01
-    ./results/perl-5.27.6/buildlogs
-    ./testing
-    ./testing/perl-5.27.6
-    ./testing/perl-5.27.6/.cpanreporter
-    ./testing/perl-5.27.6/.cpanm
-    ./testing/perl-5.27.6/.cpanm/work
-    ./testing/perl-5.27.6/lib
-    ./testing/perl-5.27.6/lib/site_perl
-    ./testing/perl-5.27.6/lib/5.27.6
-    ./testing/perl-5.27.6/bin
-
-The F<results/E<lt>perl-versionE<gt>/analysis/01> directory would hold F<.log.json>
-files like these:
-
-    $> ls -l ./results/perl-5.27.6/analysis/01 | head -5
-    total 5824
-    -rw-r--r-- 1 jkeenan jkeenan    757 Dec 16 13:58 ABH.Mozilla-CA-20160104.log.json
-    -rw-r--r-- 1 jkeenan jkeenan   6504 Dec 16 13:58 ABIGAIL.Regexp-Common-2017060201.log.json
-    -rw-r--r-- 1 jkeenan jkeenan  11639 Dec 16 13:58 ABW.Template-Toolkit-2.27.log.json
-    -rw-r--r-- 1 jkeenan jkeenan    645 Dec 16 13:58 ABW.XML-Namespace-0.02.log.json
-
-In versions 0.06 and later, the F<.log.json> files are placed one directory
-higher, I<i.e.,> in F<results/E<lt>perl-versionE<gt>/analysis>.  An F<analysis/01>
-directory is no longer created, as it was deemed unnecessary.  Please upgrade
-to a newer version at the completion of your tracking of the Perl 5.27
-development cycle, I<i.e.,> once Perl 5.28.0 has been released.
-
-As a consequence of this change, the C<analyze_json_logs()> method no longer
-needs a key-value pair like C<run =E<gt> 1> in the hash reference passed to the
-method as argument.
 
 =head1 METHODS
 
@@ -283,13 +213,13 @@ method as argument.
 
 =item * Purpose
 
-Test::Against::Dev constructor.  Guarantees that the top-level directory for
+Test::Against::Commit constructor.  Guarantees that the top-level directory for
 the application (C<application_dir>) already exists, then creates two
 directories thereunder:  F<testing/> and F<results/>.
 
 =item * Arguments
 
-    my $self = Test::Against::Dev->new( {
+    my $self = Test::Against::Commit->new( {
         application_dir => '/path/to/application',
     } );
 
@@ -305,7 +235,7 @@ String holding path to the directory which will serve as the top level for your 
 
 =item * Return Value
 
-Test::Against::Dev object.
+Test::Against::Commit object.
 
 =item * Comment
 
@@ -377,7 +307,7 @@ sub get_results_dir {
     ($tarball_path, $work_dir) = $self->perform_tarball_download( {
         host                => 'ftp.funet.fi',
         hostdir             => /pub/languages/perl/CPAN/src/5.0,
-        perl_version        => 'perl-5.27.6',
+        perl_version        => 'perl-5.43.6',
         compression         => 'gz',
         work_dir            => "~/tmp/Downloads",
         verbose             => 1,
@@ -649,13 +579,13 @@ sub configure_build_install_perl {
     my $verbose = delete $args->{verbose} || '';
 
     # What I want in terms of verbose output:
-    # 0: No verbose output from Test::Against::Dev
+    # 0: No verbose output from Test::Against::Commit
     #    Minimal output from tar, Configure, make
     #    (tar xzf; Configure, make 1>/dev/null
-    # 1: Verbose output from Test::Against::Dev
+    # 1: Verbose output from Test::Against::Commit
     #    Minimal output from tar, Configure, make
     #    (tar xzf; Configure, make 1>/dev/null
-    # 2: Verbose output from Test::Against::Dev
+    # 2: Verbose output from Test::Against::Commit
     #    Verbose output from tar ('v')
     #    Regular output from Configure, make
 
@@ -906,7 +836,7 @@ String holding the absolute path of a gzipped copy of the F<build.log>
 generated by the F<cpanm> run which this method conducts.  The basename
 of this file, using the arguments supplied, would be:
 
-   cpan-river-1000.perl-5.27.6.01.build.log.gz
+   cpan-river-1000.perl-5.43.6.01.build.log.gz
 
 =item * Comment
 
@@ -914,10 +844,10 @@ The method guarantees the existence of several directories underneath the
 "results" directory discussed above.  These are illustrated as follows:
 
     /path/to/application/results/
-                        /results/perl-5.27.6/
-                        /results/perl-5.27.6/analysis/
-                        /results/perl-5.27.6/buildlogs/
-                        /results/perl-5.27.6/storage/
+                        /results/perl-5.43.6/
+                        /results/perl-5.43.6/analysis/
+                        /results/perl-5.43.6/buildlogs/
+                        /results/perl-5.43.6/storage/
 
 =back
 
@@ -1241,10 +1171,10 @@ C<cpanm> against that C<perl>.
 
 =item * Arguments
 
-    $self = Test::Against::Dev->new_from_existing_perl_cpanm( {
-        path_to_perl    => '/path/to/perl-5.27.0/bin/perl',
+    $self = Test::Against::Commit->new_from_existing_perl_cpanm( {
+        path_to_perl    => '/path/to/perl-5.43.0/bin/perl',
         application_dir => '/path/to/application',
-        perl_version    => 'perl-5.27.0',
+        perl_version    => 'perl-5.43.0',
     } );
 
 Takes a hash reference with the following elements:
@@ -1276,7 +1206,7 @@ provide a Perl-true value to turn it on.  Scope is limited to this method.
 
 =item * Return Value
 
-Test::Against::Dev object.
+Test::Against::Commit object.
 
 =item * Comment
 
@@ -1391,8 +1321,8 @@ unlikely to work in its current form on Windows, Cygwin or VMS.
 
 =head1 SUPPORT
 
-Please report any bugs by mail to C<bug-Test-Against-Dev@rt.cpan.org> or
-through the web interface at L<http://rt.cpan.org>.
+Please report any bugs in our GitHub Issues queue at
+L<https://github.com/jkeenan/perl5-test-cpan-against-commit/issues>.
 
 =head1 COPYRIGHT
 
@@ -1402,15 +1332,15 @@ it and/or modify it under the same terms as Perl itself.
 The full text of the license can be found in the
 LICENSE file included with this module.
 
-Copyright James E Keenan 2017-2018.  All rights reserved.
+Copyright James E Keenan 2017-2025.  All rights reserved.
 
 =head1 ACKNOWLEDGEMENTS
 
-This library emerged in the wake of the author's participation in the Perl 5
-Core Hackathon held in Amsterdam, Netherlands, in October 2017.  The author
-thanks the lead organizers of that event, Sawyer X and Todd Rinaldo, for the
-invitation to the hackathon.  The event could not have happened without the
-generous contributions from the following companies:
+This library's ancestor, Test-Against-Dev, emerged in the wake of the author's
+participation in the Perl 5 Core Hackathon held in Amsterdam, Netherlands, in
+October 2017.  The author thanks the lead organizers of that event, Sawyer X
+and Todd Rinaldo, for the invitation to the hackathon.  The event could not
+have happened without the generous contributions from the following companies:
 
 =over 4
 
@@ -1438,7 +1368,7 @@ generous contributions from the following companies:
 
 =head1 SEE ALSO
 
-perl(1). CPAN::cpanminus::reporter::RetainReports(3).  Perl::Download::FTP(3).
+perl(1). CPAN::cpanminus::reporter::RetainReports(3).
 App::cpanminus::reporter(3).  cpanm(3).
 
 L<2017 Perl 5 Core Hackathon Discussion on Testing|https://github.com/p5h/2017/wiki/What-Do-We-Want-and-Need-from-Smoke-Testing%3F>.
