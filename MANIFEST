@@ -7,4 +7,3 @@ MANIFEST.SKIP
 README
 t/001-new.t
 Todo
-xt/001-new.t
