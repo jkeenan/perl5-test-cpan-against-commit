@@ -4,19 +4,18 @@ use 5.14.0;
 our $VERSION = '0.14';
 use Carp;
 use Cwd;
-use File::Basename;
+#use File::Basename;
 use File::Fetch;
 use File::Path ( qw| make_path | );
 use File::Spec;
-use File::Temp ( qw| tempdir tempfile | );
-use Archive::Tar;
+#use File::Temp ( qw| tempdir tempfile | );
+#use Archive::Tar;
 #use Capture::Tiny ( qw| capture_stdout | );
-use CPAN::cpanminus::reporter::RetainReports;
-use Data::Dump ( qw| dd pp | );
-use JSON;
-use Path::Tiny;
-#use Perl::Download::FTP;
-use Text::CSV_XS;
+#use CPAN::cpanminus::reporter::RetainReports;
+#use Data::Dump ( qw| dd pp | );
+#use JSON;
+#use Path::Tiny;
+#use Text::CSV_XS;
 
 =head1 NAME
 
@@ -595,7 +594,7 @@ Hash reference with these elements:
 =item * C<uri>
 
 String holding URI from which F<cpanm> will be downloaded.  Optional; defaults
-to L<http://cpansearch.perl.org/src/MIYAGAWA/App-cpanminus-1.7043/bin/cpanm>.
+to L<https://fastapi.metacpan.org/source/MIYAGAWA/App-cpanminus-1.7048/bin/cpanm>.
 
 =item * C<verbose>
 
