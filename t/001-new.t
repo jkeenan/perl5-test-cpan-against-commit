@@ -119,6 +119,13 @@ my $self;
 
     {
         local $@;
+        eval { $self->get_this_perl(); };
+        like($@, qr/bin directory has not yet been defined/,
+            "No bin dir, hence no possibility of installed perl");
+    }
+
+    {
+        local $@;
         eval { $self->get_this_cpanm(); };
         like($@, qr/location of cpanm has not yet been defined/,
             "Got exception for premature get_this_cpanm()");

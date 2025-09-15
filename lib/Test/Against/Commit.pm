@@ -10,6 +10,7 @@ use File::Path ( qw| make_path | );
 use File::Spec;
 use File::Temp ( qw| tempdir tempfile | );
 use Archive::Tar;
+#use Capture::Tiny ( qw| capture_stdout | );
 use CPAN::cpanminus::reporter::RetainReports;
 use Data::Dump ( qw| dd pp | );
 use JSON;
@@ -465,12 +466,8 @@ sub prepare_testing_directory {
     my $thisperl = File::Spec->catfile($self->get_bin_dir, 'perl');
     my $libdir = $self->get_lib_dir();
     my $invoke = "$thisperl -I$libdir";
-    # TODO:  Use Capture::Tiny to capture the output of perl -v
     my $rv = system(qq{$invoke -v | head -n 2 | tail -n 1})
         and croak "Could not run perl executable at $thisperl";
-
-    # TODO: Does bin/cpanm exist and work?  If not, install it.
-    # See: +44 /home/jkeenan/gitwork/test-against-dev/lib/Test/Against/Dev.pm
 
     return $self;
 }
@@ -550,6 +547,30 @@ sub get_lib_dir {
     }
     else {
         return $self->{lib_dir};
+    }
+}
+
+sub get_this_perl {
+    my $self = shift;
+    if ($self->{this_perl}) {
+        return $self->{this_perl};
+    }
+    else {
+        local $@;
+        my $this_perl;
+        eval {
+            $this_perl = File::Spec->catfile($self->get_bin_dir, 'perl');
+        };
+        if ($@) {
+            croak $@;
+        }
+        elsif (-e $this_perl) {
+            $self->{this_perl} = $this_perl;
+            return $self->{this_perl};
+        }
+        else {
+            croak "No executable perl found at: $this_perl";
+        }
     }
 }
 
@@ -652,184 +673,6 @@ sub get_cpanm_dir {
     }
 }
 
-#sub access_configure_command {
-#    my ($self, $arg) = @_;
-#    my $cmd;
-#    if (length $arg) {
-#        $cmd = $arg;
-#    }
-#    else {
-#        $cmd = "sh ./Configure -des -Dusedevel -Uversiononly -Dprefix=";
-#        $cmd .= $self->get_commit_dir;
-#        $cmd .= " -Dman1dir=none -Dman3dir=none";
-#    }
-#    $self->{configure_command} = $cmd;
-#}
-#
-#sub access_make_install_command {
-#    my ($self, $arg) = @_;
-#    my $cmd;
-#    if (length $arg) {
-#        $cmd = $arg;
-#    }
-#    else {
-#        $cmd = "make install"
-#    }
-#    $self->{make_install_command} = $cmd;
-#}
-#
-#=head2 C<configure_build_install_perl()>
-#
-#=over 4
-#
-#=item * Purpose
-#
-#Configures, builds and installs F<perl> from the downloaded tarball.
-#
-#=item * Arguments
-#
-#    my $this_perl = $self->configure_build_install_perl({
-#        verbose => 1,
-#    });
-#
-#Hash reference with the following elements:
-#
-#=over 4
-#
-#=item * C<configure_command>
-#
-#String holding a shell command to call Perl's F<Configure> program with
-#command-line options.  Optional; will default to:
-#
-#    my $commit_dir = $self->get_commit_dir();
-#
-#    sh ./Configure -des -Dusedevel -Uversiononly -Dprefix=$commit_dir \
-#        -Dman1dir=none -Dman3dir=none
-#
-#The spelling of the command is subsequently accessible by calling
-#C<$self->access_configure_command()>.
-#
-#=item * C<make_install_command>
-#
-#String holding a shell command to build and install F<perl> underneath the
-#release directory.  Optional; will default to:
-#
-#    make install
-#
-#The spelling of the command is subsequently accessible by calling
-#C<$self->access_make_install_command()>.
-#
-#=item * C<verbose>
-#
-#Extra information provided on STDOUT.  Optional; defaults to being off.  Set
-#to C<1> (recommended) for moderate verbosity.  Set to C<2> for extra verbosity
-#(full output of decompression commands, F<Configure> and F<make>).  Scope is
-#limited to this method.
-#
-#=back
-#
-#=item * Return Value
-#
-#String holding absolute path to the new F<perl> executable.  This location can
-#subsequently be accessed by calling C<$self->get_this_perl()>.
-#
-#=item * Comment
-#
-#The new F<perl> executable will sit two levels underneath the release
-#directory in a directory named F<bin/>.  That directory will sit next to a
-#directory named F<lib/> under which libraries will be installed.  Those
-#locations can subsequently be accessed by calling C<$self->get_bin_dir()> and
-#C<$self->get_lib_dir()>, respectively.
-#
-#=back
-#
-#=cut
-#
-#sub configure_build_install_perl {
-#    my ($self, $args) = @_;
-#    my $cwd = cwd();
-#    croak "configure_build_install_perl: Must supply hash ref as argument"
-#        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
-#    my $verbose = delete $args->{verbose} || '';
-#
-#    # What I want in terms of verbose output:
-#    # 0: No verbose output from Test::Against::Commit
-#    #    Minimal output from tar, Configure, make
-#    #    (tar xzf; Configure, make 1>/dev/null
-#    # 1: Verbose output from Test::Against::Commit
-#    #    Minimal output from tar, Configure, make
-#    #    (tar xzf; Configure, make 1>/dev/null
-#    # 2: Verbose output from Test::Against::Commit
-#    #    Verbose output from tar ('v')
-#    #    Regular output from Configure, make
-#
-#    # Use default configure and make install commands unless an argument has
-#    # been passed.
-#    my $acc = $self->access_configure_command($args->{configure_command} || '');
-#    my $mic = $self->access_make_install_command($args->{make_install_command} || '');
-#    unless ($verbose > 1) {
-#        $self->access_configure_command($acc . " 1>/dev/null");
-#        $self->access_make_install_command($mic . " 1>/dev/null");
-#    }
-#
-#    chdir $self->{work_dir} or croak "Unable to change to $self->{work_dir}";
-#    my $untar_command = ($verbose > 1) ? 'tar xzvf' : 'tar xzf';
-#    system(qq|$untar_command $self->{tarball_path}|)
-#        and croak "Unable to untar $self->{tarball_path}";
-#    say "Tarball has been untarred into ", File::Spec->catdir($self->{work_dir}, $self->{perl_version})
-#        if $verbose;
-#    my $build_dir = $self->{perl_version};
-#    chdir $build_dir or croak "Unable to change to $build_dir";
-#    say "Configuring perl with '$self->{configure_command}'" if $verbose;
-#    system(qq|$self->{configure_command}|)
-#        and croak "Unable to configure with '$self->{configure_command}'";
-#    say "Building and installing perl with '$self->{make_install_command}'" if $verbose;
-#    system(qq|$self->{make_install_command}|)
-#        and croak "Unable to build and install with '$self->{make_install_command}'";
-#    my $rdir = $self->get_commit_dir();
-#    my $bin_dir = File::Spec->catdir($rdir, 'bin');
-#    my $lib_dir = File::Spec->catdir($rdir, 'lib');
-#    my $this_perl = File::Spec->catfile($bin_dir, 'perl');
-#    croak "Could not locate '$bin_dir'" unless (-d $bin_dir);
-#    croak "Could not locate '$lib_dir'" unless (-d $lib_dir);
-#    croak "Could not locate '$this_perl'" unless (-f $this_perl);
-#    $self->{bin_dir} = $bin_dir;
-#    $self->{lib_dir} = $lib_dir;
-#    $self->{this_perl} = $this_perl;
-#    chdir $cwd or croak "Unable to change back to $cwd";
-#    if ($self->{restore_to_dir}) {
-#        chdir $self->{restore_to_dir} or croak "Unable to change back to $self->{restore_to_dir}";
-#    }
-#    return $this_perl;
-#}
-#
-#sub get_this_perl {
-#    my $self = shift;
-#    if (! defined $self->{this_perl}) {
-#        croak "perl has not yet been installed; run configure_build_install_perl";
-#    }
-#    else {
-#        return $self->{this_perl};
-#    }
-#}
-#
-#sub setup_results_directories {
-#    my $self = shift;
-#    croak "Perl release not yet defined" unless $self->{perl_version};
-#    my $vresults_dir = File::Spec->catdir($self->get_results_dir, $self->{perl_version});
-#    my $buildlogs_dir = File::Spec->catdir($vresults_dir, 'buildlogs');
-#    my $analysis_dir = File::Spec->catdir($vresults_dir, 'analysis');
-#    my $storage_dir = File::Spec->catdir($vresults_dir, 'storage');
-#    my @created = make_path( $vresults_dir, $buildlogs_dir, $analysis_dir, $storage_dir,
-#        { mode => 0755 });
-#    for my $dir (@created) { croak "$dir not found" unless -d $dir; }
-#    $self->{vresults_dir} = $vresults_dir;
-#    $self->{buildlogs_dir} = $buildlogs_dir;
-#    $self->{analysis_dir} = $analysis_dir;
-#    $self->{storage_dir} = $storage_dir;
-#    return scalar(@created);
-#}
-#
 #=head2 C<run_cpanm()>
 #
 #=over 4
@@ -988,6 +831,174 @@ sub get_cpanm_dir {
 #
 #    return $gzipped_build_log;
 #}
+#sub access_configure_command {
+#    my ($self, $arg) = @_;
+#    my $cmd;
+#    if (length $arg) {
+#        $cmd = $arg;
+#    }
+#    else {
+#        $cmd = "sh ./Configure -des -Dusedevel -Uversiononly -Dprefix=";
+#        $cmd .= $self->get_commit_dir;
+#        $cmd .= " -Dman1dir=none -Dman3dir=none";
+#    }
+#    $self->{configure_command} = $cmd;
+#}
+#
+#sub access_make_install_command {
+#    my ($self, $arg) = @_;
+#    my $cmd;
+#    if (length $arg) {
+#        $cmd = $arg;
+#    }
+#    else {
+#        $cmd = "make install"
+#    }
+#    $self->{make_install_command} = $cmd;
+#}
+#
+#=head2 C<configure_build_install_perl()>
+#
+#=over 4
+#
+#=item * Purpose
+#
+#Configures, builds and installs F<perl> from the downloaded tarball.
+#
+#=item * Arguments
+#
+#    my $this_perl = $self->configure_build_install_perl({
+#        verbose => 1,
+#    });
+#
+#Hash reference with the following elements:
+#
+#=over 4
+#
+#=item * C<configure_command>
+#
+#String holding a shell command to call Perl's F<Configure> program with
+#command-line options.  Optional; will default to:
+#
+#    my $commit_dir = $self->get_commit_dir();
+#
+#    sh ./Configure -des -Dusedevel -Uversiononly -Dprefix=$commit_dir \
+#        -Dman1dir=none -Dman3dir=none
+#
+#The spelling of the command is subsequently accessible by calling
+#C<$self->access_configure_command()>.
+#
+#=item * C<make_install_command>
+#
+#String holding a shell command to build and install F<perl> underneath the
+#release directory.  Optional; will default to:
+#
+#    make install
+#
+#The spelling of the command is subsequently accessible by calling
+#C<$self->access_make_install_command()>.
+#
+#=item * C<verbose>
+#
+#Extra information provided on STDOUT.  Optional; defaults to being off.  Set
+#to C<1> (recommended) for moderate verbosity.  Set to C<2> for extra verbosity
+#(full output of decompression commands, F<Configure> and F<make>).  Scope is
+#limited to this method.
+#
+#=back
+#
+#=item * Return Value
+#
+#String holding absolute path to the new F<perl> executable.  This location can
+#subsequently be accessed by calling C<$self->get_this_perl()>.
+#
+#=item * Comment
+#
+#The new F<perl> executable will sit two levels underneath the release
+#directory in a directory named F<bin/>.  That directory will sit next to a
+#directory named F<lib/> under which libraries will be installed.  Those
+#locations can subsequently be accessed by calling C<$self->get_bin_dir()> and
+#C<$self->get_lib_dir()>, respectively.
+#
+#=back
+#
+#=cut
+#
+#sub configure_build_install_perl {
+#    my ($self, $args) = @_;
+#    my $cwd = cwd();
+#    croak "configure_build_install_perl: Must supply hash ref as argument"
+#        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
+#    my $verbose = delete $args->{verbose} || '';
+#
+#    # What I want in terms of verbose output:
+#    # 0: No verbose output from Test::Against::Commit
+#    #    Minimal output from tar, Configure, make
+#    #    (tar xzf; Configure, make 1>/dev/null
+#    # 1: Verbose output from Test::Against::Commit
+#    #    Minimal output from tar, Configure, make
+#    #    (tar xzf; Configure, make 1>/dev/null
+#    # 2: Verbose output from Test::Against::Commit
+#    #    Verbose output from tar ('v')
+#    #    Regular output from Configure, make
+#
+#    # Use default configure and make install commands unless an argument has
+#    # been passed.
+#    my $acc = $self->access_configure_command($args->{configure_command} || '');
+#    my $mic = $self->access_make_install_command($args->{make_install_command} || '');
+#    unless ($verbose > 1) {
+#        $self->access_configure_command($acc . " 1>/dev/null");
+#        $self->access_make_install_command($mic . " 1>/dev/null");
+#    }
+#
+#    chdir $self->{work_dir} or croak "Unable to change to $self->{work_dir}";
+#    my $untar_command = ($verbose > 1) ? 'tar xzvf' : 'tar xzf';
+#    system(qq|$untar_command $self->{tarball_path}|)
+#        and croak "Unable to untar $self->{tarball_path}";
+#    say "Tarball has been untarred into ", File::Spec->catdir($self->{work_dir}, $self->{perl_version})
+#        if $verbose;
+#    my $build_dir = $self->{perl_version};
+#    chdir $build_dir or croak "Unable to change to $build_dir";
+#    say "Configuring perl with '$self->{configure_command}'" if $verbose;
+#    system(qq|$self->{configure_command}|)
+#        and croak "Unable to configure with '$self->{configure_command}'";
+#    say "Building and installing perl with '$self->{make_install_command}'" if $verbose;
+#    system(qq|$self->{make_install_command}|)
+#        and croak "Unable to build and install with '$self->{make_install_command}'";
+#    my $rdir = $self->get_commit_dir();
+#    my $bin_dir = File::Spec->catdir($rdir, 'bin');
+#    my $lib_dir = File::Spec->catdir($rdir, 'lib');
+#    my $this_perl = File::Spec->catfile($bin_dir, 'perl');
+#    croak "Could not locate '$bin_dir'" unless (-d $bin_dir);
+#    croak "Could not locate '$lib_dir'" unless (-d $lib_dir);
+#    croak "Could not locate '$this_perl'" unless (-f $this_perl);
+#    $self->{bin_dir} = $bin_dir;
+#    $self->{lib_dir} = $lib_dir;
+#    $self->{this_perl} = $this_perl;
+#    chdir $cwd or croak "Unable to change back to $cwd";
+#    if ($self->{restore_to_dir}) {
+#        chdir $self->{restore_to_dir} or croak "Unable to change back to $self->{restore_to_dir}";
+#    }
+#    return $this_perl;
+#}
+#
+#sub setup_results_directories {
+#    my $self = shift;
+#    croak "Perl release not yet defined" unless $self->{perl_version};
+#    my $vresults_dir = File::Spec->catdir($self->get_results_dir, $self->{perl_version});
+#    my $buildlogs_dir = File::Spec->catdir($vresults_dir, 'buildlogs');
+#    my $analysis_dir = File::Spec->catdir($vresults_dir, 'analysis');
+#    my $storage_dir = File::Spec->catdir($vresults_dir, 'storage');
+#    my @created = make_path( $vresults_dir, $buildlogs_dir, $analysis_dir, $storage_dir,
+#        { mode => 0755 });
+#    for my $dir (@created) { croak "$dir not found" unless -d $dir; }
+#    $self->{vresults_dir} = $vresults_dir;
+#    $self->{buildlogs_dir} = $buildlogs_dir;
+#    $self->{analysis_dir} = $analysis_dir;
+#    $self->{storage_dir} = $storage_dir;
+#    return scalar(@created);
+#}
+#
 #
 #sub gzip_cpanm_build_log {
 #    my ($self) = @_;
