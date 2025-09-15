@@ -627,7 +627,7 @@ sub fetch_cpanm {
     my $verbose = delete $args->{verbose} || '';
     my $uri = (exists $args->{uri} and length $args->{uri})
         ? $args->{uri}
-        : 'http://cpansearch.perl.org/src/MIYAGAWA/App-cpanminus-1.7043/bin/cpanm';
+        : 'https://fastapi.metacpan.org/source/MIYAGAWA/App-cpanminus-1.7048/bin/cpanm';
 
     my $cpanm_dir = File::Spec->catdir($self->get_commit_dir(), '.cpanm');
     unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
