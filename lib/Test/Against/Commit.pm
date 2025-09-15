@@ -8,14 +8,13 @@ use Cwd;
 use File::Fetch;
 use File::Path ( qw| make_path | );
 use File::Spec;
-#use File::Temp ( qw| tempdir tempfile | );
-#use Archive::Tar;
-#use Capture::Tiny ( qw| capture_stdout | );
-#use CPAN::cpanminus::reporter::RetainReports;
-#use Data::Dump ( qw| dd pp | );
-#use JSON;
-#use Path::Tiny;
-#use Text::CSV_XS;
+use File::Temp ( qw| tempfile | );
+use Archive::Tar;
+use CPAN::cpanminus::reporter::RetainReports;
+use Data::Dump ( qw| dd pp | );
+use JSON;
+use Path::Tiny;
+use Text::CSV_XS;
 
 =head1 NAME
 
@@ -836,7 +835,6 @@ sub run_cpanm {
 
 sub setup_results_directories {
     my $self = shift;
-    #croak "Perl release not yet defined" unless $self->{perl_version};
     my $vresults_dir = File::Spec->catdir($self->get_results_dir, $self->get_commit());
     my $buildlogs_dir = File::Spec->catdir($vresults_dir, 'buildlogs');
     my $analysis_dir = File::Spec->catdir($vresults_dir, 'analysis');
@@ -867,6 +865,8 @@ sub gzip_cpanm_build_log {
     # In this new approach, we'll assume that we never do anything except
     # exactly 1 run per monthly release.  Hence, there shouldn't be any files
     # in this directory whatsoever.  We'll croak if there are such file.
+    # TODO: Now that we're in Test-Against-Commit, is that assumption still
+    # valid?
     croak "There are already log files in '$self->{buildlogs_dir}'"if scalar(@files_found);
 
     my $gzipped_build_log = join('.' => (
@@ -882,204 +882,204 @@ sub gzip_cpanm_build_log {
     $self->{gzlog} = $gzlog;
 }
 
-#=head2 C<analyze_cpanm_build_logs()>
-#
-#=over 4
-#
-#=item * Purpose
-#
-#Parse the F<build.log> created by running C<run_cpanm()>, creating JSON files
-#which log the results of attempting to install each module in the list or
-#file.
-#
-#=item * Arguments
-#
-#    $ranalysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
-#
-#Hash reference which, at the present time, can only take one element:
-#C<verbose>.  Optional.
-#
-#=item * Return Value
-#
-#String holding absolute path to the directory holding F<.log.json> files for a
-#particular run of C<run_cpanm()>.
-#
-#=item * Comment
-#
-#=back
-#
-#=cut
-#
-#sub analyze_cpanm_build_logs {
-#    my ($self, $args) = @_;
-#    croak "analyze_cpanm_build_logs: Must supply hash ref as argument"
-#        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
-#    my $verbose = delete $args->{verbose} || '';
-#
-#    my $gzlog = $self->{gzlog};
-#    my $ranalysis_dir = $self->{analysis_dir};
-#    unless (-d $ranalysis_dir) { make_path($ranalysis_dir, { mode => 0755 }); }
-#        croak "Could not locate $ranalysis_dir" unless (-d $ranalysis_dir);
-#
-#    my ($fh, $working_log) = tempfile();
-#    system(qq|gunzip -c $gzlog > $working_log|)
-#        and croak "Unable to gunzip $gzlog to $working_log";
-#
-#    my $reporter = CPAN::cpanminus::reporter::RetainReports->new(
-#      force => 1, # ignore mtime check on build.log
-#      build_logfile => $working_log,
-#      build_dir => $self->get_cpanm_dir,
-#      'ignore-versions' => 1,
-#    );
-#    croak "Unable to create new reporter for $working_log"
-#        unless defined $reporter;
-#    no warnings 'redefine';
-#    local *CPAN::cpanminus::reporter::RetainReports::_check_cpantesters_config_data = sub { 1 };
-#    $reporter->set_report_dir($ranalysis_dir);
-#    $reporter->run;
-#    say "See results in $ranalysis_dir" if $verbose;
-#
-#    return $ranalysis_dir;
-#}
-#
-#=head2 C<analyze_json_logs()>
-#
-#=over 4
-#
-#=item * Purpose
-#
-#Create a character-delimited-values file summarizing the results of a given
-#run.  The delimiter defaults to a pipe (C<|>), thereby creating a
-#pipe-separated values file (C<.psv>), but you may select a comma (C<,>),
-#generating a comma-separated-values file (C<.csv>) as well.
-#
-#=item * Arguments
-#
-#    my $fcdvfile = $self->analyze_json_logs( { verbose => 1, sep_char => '|' } );
-#
-#Hash reference with these elements:
-#
-#=over 4
-#
-#=item * C<verbose>
-#
-#Extra information provided on STDOUT.  Optional; defaults to being off;
-#provide a Perl-true value to turn it on.  Scope is limited to this method.
-#
-#=item * C<sep_char>
-#
-#Delimiter character.  Optional; defaults to pipe (C<|>), but comma (C<,>) may
-#also be chosen.
-#
-#=back
-#
-#=item * Return Value
-#
-#String holding absolute path to the C<.psv> or C<.csv> file created.
-#
-#=item * Comment
-#
-#As a precaution, the function creates a tarball to archive the F<.log.json>
-#files for a given run.
-#
-#=back
-#
-#=cut
-#
-#sub analyze_json_logs {
-#    my ($self, $args) = @_;
-#    croak "analyze_json_logs: Must supply hash ref as argument"
-#        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
-#    my $verbose     = delete $args->{verbose}   || '';
-#    my $sep_char    = delete $args->{sep_char}  || '|';
-#    croak "analyze_json_logs: Currently only pipe ('|') and comma (',') are supported as delimiter characters"
-#        unless ($sep_char eq '|' or $sep_char eq ',');
-#
-#    # As a precaution, we archive the log.json files.
-#
-#    my $output = join('.' => (
-#        $self->{title},
-#        $self->{perl_version},
-#        'log',
-#        'json',
-#        'tar',
-#        'gz'
-#    ) );
-#    my $foutput = File::Spec->catfile($self->{storage_dir}, $output);
-#    say "Output will be: $foutput" if $verbose;
-#
-#    my $vranalysis_dir = $self->{analysis_dir};
-#    opendir my $DIRH, $vranalysis_dir or croak "Unable to open $vranalysis_dir for reading";
-#    my @json_log_files = sort map { File::Spec->catfile('analysis', $_) }
-#        grep { m/\.log\.json$/ } readdir $DIRH;
-#    closedir $DIRH or croak "Unable to close $vranalysis_dir after reading";
-#    dd(\@json_log_files) if $verbose;
-#
-#    my $versioned_results_dir = $self->{vresults_dir};
-#    chdir $versioned_results_dir or croak "Unable to chdir to $versioned_results_dir";
-#    my $cwd = cwd();
-#    say "Now in $cwd" if $verbose;
-#
-#    my $tar = Archive::Tar->new;
-#    $tar->add_files(@json_log_files);
-#    $tar->write($foutput, COMPRESS_GZIP);
-#    croak "$foutput not created" unless (-f $foutput);
-#    say "Created $foutput" if $verbose;
-#
-#    # Having archived our log.json files, we now proceed to read them and to
-#    # write a pipe- (or comma-) separated-values file summarizing the run.
-#
-#    my %data = ();
-#    for my $log (@json_log_files) {
-#        my $flog = File::Spec->catfile($cwd, $log);
-#        my %this = ();
-#        my $f = Path::Tiny::path($flog);
-#        my $decoded;
-#        {
-#            local $@;
-#            eval { $decoded = decode_json($f->slurp_utf8); };
-#            if ($@) {
-#                say STDERR "JSON decoding problem in $flog: <$@>";
-#                eval { $decoded = JSON->new->decode($f->slurp_utf8); };
-#            }
-#        }
-#        map { $this{$_} = $decoded->{$_} } ( qw| author dist distname distversion grade | );
-#        $data{$decoded->{dist}} = \%this;
-#    }
-#    #pp(\%data);
-#
-#    my $cdvfile = join('.' => (
-#        $self->{title},
-#        $self->{perl_version},
-#        (($sep_char eq ',') ? 'csv' : 'psv'),
-#    ) );
-#
-#    my $fcdvfile = File::Spec->catfile($self->{storage_dir}, $cdvfile);
-#    say "Output will be: $fcdvfile" if $verbose;
-#
-#    my @fields = ( qw| author distname distversion grade | );
-#    my $perl_version = $self->{perl_version};
-#    my $columns = [
-#        'dist',
-#        map { "$perl_version.$_" } @fields,
-#    ];
-#    my $psv = Text::CSV_XS->new({ binary => 1, auto_diag => 1, sep_char => $sep_char, eol => $/ });
-#    open my $OUT, ">:encoding(utf8)", $fcdvfile
-#        or croak "Unable to open $fcdvfile for writing";
-#    $psv->print($OUT, $columns), "\n" or $psv->error_diag;
-#    for my $dist (sort keys %data) {
-#        $psv->print($OUT, [
-#           $dist,
-#           @{$data{$dist}}{@fields},
-#        ]) or $psv->error_diag;
-#    }
-#    close $OUT or croak "Unable to close $fcdvfile after writing";
-#    croak "$fcdvfile not created" unless (-f $fcdvfile);
-#    say "Examine ", (($sep_char eq ',') ? 'comma' : 'pipe'), "-separated values in $fcdvfile" if $verbose;
-#
-#    return $fcdvfile;
-#}
-#
+=head2 C<analyze_cpanm_build_logs()>
+
+=over 4
+
+=item * Purpose
+
+Parse the F<build.log> created by running C<run_cpanm()>, creating JSON files
+which log the results of attempting to install each module in the list or
+file.
+
+=item * Arguments
+
+    $ranalysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
+
+Hash reference which, at the present time, can only take one element:
+C<verbose>.  Optional.
+
+=item * Return Value
+
+String holding absolute path to the directory holding F<.log.json> files for a
+particular run of C<run_cpanm()>.
+
+=item * Comment
+
+=back
+
+=cut
+
+sub analyze_cpanm_build_logs {
+    my ($self, $args) = @_;
+    croak "analyze_cpanm_build_logs: Must supply hash ref as argument"
+        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
+    my $verbose = delete $args->{verbose} || '';
+
+    my $gzlog = $self->{gzlog};
+    my $ranalysis_dir = $self->{analysis_dir};
+    unless (-d $ranalysis_dir) { make_path($ranalysis_dir, { mode => 0755 }); }
+        croak "Could not locate $ranalysis_dir" unless (-d $ranalysis_dir);
+
+    my ($fh, $working_log) = tempfile();
+    system(qq|gunzip -c $gzlog > $working_log|)
+        and croak "Unable to gunzip $gzlog to $working_log";
+
+    my $reporter = CPAN::cpanminus::reporter::RetainReports->new(
+      force => 1, # ignore mtime check on build.log
+      build_logfile => $working_log,
+      build_dir => $self->get_cpanm_dir,
+      'ignore-versions' => 1,
+    );
+    croak "Unable to create new reporter for $working_log"
+        unless defined $reporter;
+    no warnings 'redefine';
+    local *CPAN::cpanminus::reporter::RetainReports::_check_cpantesters_config_data = sub { 1 };
+    $reporter->set_report_dir($ranalysis_dir);
+    $reporter->run;
+    say "See results in $ranalysis_dir" if $verbose;
+
+    return $ranalysis_dir;
+}
+
+=head2 C<analyze_json_logs()>
+
+=over 4
+
+=item * Purpose
+
+Create a character-delimited-values file summarizing the results of a given
+run.  The delimiter defaults to a pipe (C<|>), thereby creating a
+pipe-separated values file (C<.psv>), but you may select a comma (C<,>),
+generating a comma-separated-values file (C<.csv>) as well.
+
+=item * Arguments
+
+    my $fcdvfile = $self->analyze_json_logs( { verbose => 1, sep_char => '|' } );
+
+Hash reference with these elements:
+
+=over 4
+
+=item * C<verbose>
+
+Extra information provided on STDOUT.  Optional; defaults to being off;
+provide a Perl-true value to turn it on.  Scope is limited to this method.
+
+=item * C<sep_char>
+
+Delimiter character.  Optional; defaults to pipe (C<|>), but comma (C<,>) may
+also be chosen.
+
+=back
+
+=item * Return Value
+
+String holding absolute path to the C<.psv> or C<.csv> file created.
+
+=item * Comment
+
+As a precaution, the function creates a tarball to archive the F<.log.json>
+files for a given run.
+
+=back
+
+=cut
+
+sub analyze_json_logs {
+    my ($self, $args) = @_;
+    croak "analyze_json_logs: Must supply hash ref as argument"
+        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
+    my $verbose     = delete $args->{verbose}   || '';
+    my $sep_char    = delete $args->{sep_char}  || '|';
+    croak "analyze_json_logs: Currently only pipe ('|') and comma (',') are supported as delimiter characters"
+        unless ($sep_char eq '|' or $sep_char eq ',');
+
+    # As a precaution, we archive the log.json files.
+
+    my $output = join('.' => (
+        $self->{title},
+        $self->{commit},
+        'log',
+        'json',
+        'tar',
+        'gz'
+    ) );
+    my $foutput = File::Spec->catfile($self->{storage_dir}, $output);
+    say "Output will be: $foutput" if $verbose;
+
+    my $vranalysis_dir = $self->{analysis_dir};
+    opendir my $DIRH, $vranalysis_dir or croak "Unable to open $vranalysis_dir for reading";
+    my @json_log_files = sort map { File::Spec->catfile('analysis', $_) }
+        grep { m/\.log\.json$/ } readdir $DIRH;
+    closedir $DIRH or croak "Unable to close $vranalysis_dir after reading";
+    dd(\@json_log_files) if $verbose;
+
+    my $versioned_results_dir = $self->{vresults_dir};
+    chdir $versioned_results_dir or croak "Unable to chdir to $versioned_results_dir";
+    my $cwd = cwd();
+    say "Now in $cwd" if $verbose;
+
+    my $tar = Archive::Tar->new;
+    $tar->add_files(@json_log_files);
+    $tar->write($foutput, COMPRESS_GZIP);
+    croak "$foutput not created" unless (-f $foutput);
+    say "Created $foutput" if $verbose;
+
+    # Having archived our log.json files, we now proceed to read them and to
+    # write a pipe- (or comma-) separated-values file summarizing the run.
+
+    my %data = ();
+    for my $log (@json_log_files) {
+        my $flog = File::Spec->catfile($cwd, $log);
+        my %this = ();
+        my $f = Path::Tiny::path($flog);
+        my $decoded;
+        {
+            local $@;
+            eval { $decoded = decode_json($f->slurp_utf8); };
+            if ($@) {
+                say STDERR "JSON decoding problem in $flog: <$@>";
+                eval { $decoded = JSON->new->decode($f->slurp_utf8); };
+            }
+        }
+        map { $this{$_} = $decoded->{$_} } ( qw| author dist distname distversion grade | );
+        $data{$decoded->{dist}} = \%this;
+    }
+    #pp(\%data);
+
+    my $cdvfile = join('.' => (
+        $self->{title},
+        $self->{commit},
+        (($sep_char eq ',') ? 'csv' : 'psv'),
+    ) );
+
+    my $fcdvfile = File::Spec->catfile($self->{storage_dir}, $cdvfile);
+    say "Output will be: $fcdvfile" if $verbose;
+
+    my @fields = ( qw| author distname distversion grade | );
+    my $commit = $self->{commit};
+    my $columns = [
+        'dist',
+        map { "$commit.$_" } @fields,
+    ];
+    my $psv = Text::CSV_XS->new({ binary => 1, auto_diag => 1, sep_char => $sep_char, eol => $/ });
+    open my $OUT, ">:encoding(utf8)", $fcdvfile
+        or croak "Unable to open $fcdvfile for writing";
+    $psv->print($OUT, $columns), "\n" or $psv->error_diag;
+    for my $dist (sort keys %data) {
+        $psv->print($OUT, [
+           $dist,
+           @{$data{$dist}}{@fields},
+        ]) or $psv->error_diag;
+    }
+    close $OUT or croak "Unable to close $fcdvfile after writing";
+    croak "$fcdvfile not created" unless (-f $fcdvfile);
+    say "Examine ", (($sep_char eq ',') ? 'comma' : 'pipe'), "-separated values in $fcdvfile" if $verbose;
+
+    return $fcdvfile;
+}
+
 #=head2 C<new_from_existing_perl_cpanm()>
 #
 #=over 4
