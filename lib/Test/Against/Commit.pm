@@ -2,6 +2,8 @@ package Test::Against::Commit;
 use strict;
 use 5.14.0;
 our $VERSION = '0.14';
+# core modules
+use Archive::Tar;
 use Carp;
 use Cwd;
 #use File::Basename;
@@ -9,7 +11,7 @@ use File::Fetch;
 use File::Path ( qw| make_path | );
 use File::Spec;
 use File::Temp ( qw| tempfile | );
-use Archive::Tar;
+# non-core modules
 use CPAN::cpanminus::reporter::RetainReports;
 use Data::Dump ( qw| dd pp | );
 use JSON;
@@ -1000,7 +1002,7 @@ sub analyze_json_logs {
     dd($json_log_files) if $verbose;
 
     # As a precaution, we archive those log.json files.
-    my $cwd = $self->_archive_log_files( {
+    $self->_archive_log_files( {
         json_log_files  => $json_log_files,
         verbose         => $verbose,
     } );
@@ -1009,7 +1011,7 @@ sub analyze_json_logs {
     # write a pipe- (or comma-) separated-values file summarizing the run.
     my %data = ();
     for my $log (@{$json_log_files}) {
-        my $flog = File::Spec->catfile($cwd, $log);
+        my $flog = File::Spec->catfile($self->{vresults_dir}, $log);
         my %this = ();
         my $f = Path::Tiny::path($flog);
         my $decoded;
@@ -1059,20 +1061,17 @@ sub _archive_log_files {
     ) );
     my $foutput = File::Spec->catfile($self->{storage_dir}, $output);
     say "Output will be: $foutput" if $args->{verbose};
-
-    # Is this chdir necessary?  Yes, at least for the time being,
-    # as we need to return it to the caller.
     my $versioned_results_dir = $self->{vresults_dir};
-    chdir $versioned_results_dir or croak "Unable to chdir to $versioned_results_dir";
-    my $cwd = cwd();
-    say "Now in $cwd" if $args->{verbose};
-
+    my $previous_cwd = cwd();
+    chdir $self->{vresults_dir} or croak "Unable to chdir to $self->{vresults_dir}";
+    say "Now in $self->{vresults_dir}" if $args->{verbose};
     my $tar = Archive::Tar->new;
     $tar->add_files(@{$args->{json_log_files}});
     $tar->write($foutput, COMPRESS_GZIP);
     croak "$foutput not created" unless (-f $foutput);
-    say "Created $foutput" if $args->{verbose};
-    return $cwd;
+    say "Created archive $foutput" if $args->{verbose};
+    chdir $previous_cwd or croak "Unable to change back to $previous_cwd";
+    return 1;
 }
 
 sub _create_csv_file {
