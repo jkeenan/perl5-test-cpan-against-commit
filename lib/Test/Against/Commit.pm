@@ -1043,6 +1043,7 @@ sub analyze_json_logs {
                 eval { $decoded = JSON->new->decode($f->slurp_utf8); };
             }
         }
+        # Remove dist and distversion columns
         map { $this{$_} = $decoded->{$_} } ( qw| author dist distname distversion grade | );
         $data{$decoded->{dist}} = \%this;
     }
@@ -1057,10 +1058,12 @@ sub analyze_json_logs {
     my $fcdvfile = File::Spec->catfile($self->{storage_dir}, $cdvfile);
     say "Output will be: $fcdvfile" if $verbose;
 
+    # Remove distversion
     my @fields = ( qw| author distname distversion grade | );
     my $commit = $self->{commit};
     my $columns = [
         'dist',
+        # Now, only @fields
         map { "$commit.$_" } @fields,
     ];
     my $psv = Text::CSV_XS->new({ binary => 1, auto_diag => 1, sep_char => $sep_char, eol => $/ });
