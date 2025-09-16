@@ -919,9 +919,8 @@ sub analyze_cpanm_build_logs {
     my $verbose = delete $args->{verbose} || '';
 
     my $gzlog = $self->{gzlog};
-    my $ranalysis_dir = $self->{analysis_dir};
-    unless (-d $ranalysis_dir) { make_path($ranalysis_dir, { mode => 0755 }); }
-        croak "Could not locate $ranalysis_dir" unless (-d $ranalysis_dir);
+    unless (-d $self->{analysis_dir}) { make_path($self->{analysis_dir}, { mode => 0755 }); }
+    croak "Could not locate $self->{analysis_dir}" unless (-d $self->{analysis_dir});
 
     my ($fh, $working_log) = tempfile();
     system(qq|gunzip -c $gzlog > $working_log|)
@@ -937,11 +936,11 @@ sub analyze_cpanm_build_logs {
         unless defined $reporter;
     no warnings 'redefine';
     local *CPAN::cpanminus::reporter::RetainReports::_check_cpantesters_config_data = sub { 1 };
-    $reporter->set_report_dir($ranalysis_dir);
+    $reporter->set_report_dir($self->{analysis_dir});
     $reporter->run;
-    say "See results in $ranalysis_dir" if $verbose;
+    say "See results in $self->{analysis_dir}" if $verbose;
 
-    return $ranalysis_dir;
+    return $self->{analysis_dir};
 }
 
 =head2 C<analyze_json_logs()>
@@ -1091,7 +1090,12 @@ sub _create_csv_file {
         'dist',
         @fields,
     ];
-    my $psv = Text::CSV_XS->new({ binary => 1, auto_diag => 1, sep_char => $args->{sep_char}, eol => $/ });
+    my $psv = Text::CSV_XS->new({
+        binary => 1,
+        auto_diag => 1,
+        sep_char => $args->{sep_char},
+        eol => $/,
+    });
     open my $OUT, ">:encoding(utf8)", $fcdvfile
         or croak "Unable to open $fcdvfile for writing";
     $psv->print($OUT, $columns), "\n" or $psv->error_diag;
