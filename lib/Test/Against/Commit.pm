@@ -1000,7 +1000,10 @@ sub analyze_json_logs {
     dd($json_log_files) if $verbose;
 
     # As a precaution, we archive those log.json files.
-    my $cwd = $self->_archive_log_files($json_log_files, $verbose);
+    my $cwd = $self->_archive_log_files( {
+        json_log_files  => $json_log_files,
+        verbose         => $verbose,
+    } );
 
     # Having archived our log.json files, we now proceed to read them and to
     # write a pipe- (or comma-) separated-values file summarizing the run.
@@ -1024,7 +1027,11 @@ sub analyze_json_logs {
     #pp(\%data);
 
     # Now we create a CSV file (really ... a PSV)
-    my $fcdvfile = $self->_create_csv_file($sep_char, \%data, $verbose);
+    my $fcdvfile = $self->_create_csv_file( {
+        sep_char        => $sep_char,
+        data            => \%data,
+        verbose         => $verbose,
+    } );
 
     return $fcdvfile;
 }
@@ -1040,7 +1047,7 @@ sub _list_log_files {
 }
 
 sub _archive_log_files {
-    my ($self, $json_log_files, $verbose) = @_;
+    my ($self, $args) = @_;
     # TODO: Is this file name self-documenting enough?  Need datestamp?
     my $output = join('.' => (
         $self->{title},
@@ -1051,33 +1058,33 @@ sub _archive_log_files {
         'gz'
     ) );
     my $foutput = File::Spec->catfile($self->{storage_dir}, $output);
-    say "Output will be: $foutput" if $verbose;
+    say "Output will be: $foutput" if $args->{verbose};
 
     # Is this chdir necessary?  Yes, at least for the time being,
     # as we need to return it to the caller.
     my $versioned_results_dir = $self->{vresults_dir};
     chdir $versioned_results_dir or croak "Unable to chdir to $versioned_results_dir";
     my $cwd = cwd();
-    say "Now in $cwd" if $verbose;
+    say "Now in $cwd" if $args->{verbose};
 
     my $tar = Archive::Tar->new;
-    $tar->add_files(@{$json_log_files});
+    $tar->add_files(@{$args->{json_log_files}});
     $tar->write($foutput, COMPRESS_GZIP);
     croak "$foutput not created" unless (-f $foutput);
-    say "Created $foutput" if $verbose;
+    say "Created $foutput" if $args->{verbose};
     return $cwd;
 }
 
 sub _create_csv_file {
-    my ($self, $sep_char, $dataref, $verbose) = @_;
+    my ($self, $args) = @_;
 
     my $cdvfile = join('.' => (
         $self->{title},
         $self->{commit},
-        (($sep_char eq ',') ? 'csv' : 'psv'),
+        (($args->{sep_char} eq ',') ? 'csv' : 'psv'),
     ) );
     my $fcdvfile = File::Spec->catfile($self->{storage_dir}, $cdvfile);
-    say "Output will be: $fcdvfile" if $verbose;
+    say "Output will be: $fcdvfile" if $args->{verbose};
 
     my @fields = ( qw| author distname grade | );
     my $commit = $self->{commit};
@@ -1085,20 +1092,22 @@ sub _create_csv_file {
         'dist',
         @fields,
     ];
-    my $psv = Text::CSV_XS->new({ binary => 1, auto_diag => 1, sep_char => $sep_char, eol => $/ });
+    my $psv = Text::CSV_XS->new({ binary => 1, auto_diag => 1, sep_char => $args->{sep_char}, eol => $/ });
     open my $OUT, ">:encoding(utf8)", $fcdvfile
         or croak "Unable to open $fcdvfile for writing";
     $psv->print($OUT, $columns), "\n" or $psv->error_diag;
-    for my $dist (sort keys %${dataref}) {
+    for my $dist (sort keys %{$args->{data}}) {
         $psv->print($OUT, [
            $dist,
-           @{$dataref->{$dist}}{@fields},
+           @{$args->{data}->{$dist}}{@fields},
         ]) or $psv->error_diag;
     }
     close $OUT or croak "Unable to close $fcdvfile after writing";
     croak "$fcdvfile not created" unless (-f $fcdvfile);
-    say "Examine ", (($sep_char eq ',') ? 'comma' : 'pipe'), "-separated values in $fcdvfile"
-        if $verbose;
+    say "Examine ",
+        (($args->{sep_char} eq ',') ? 'comma' : 'pipe'),
+        "-separated values in $fcdvfile"
+            if $args->{verbose};
     return $fcdvfile;
 }
 
