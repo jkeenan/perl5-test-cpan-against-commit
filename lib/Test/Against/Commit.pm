@@ -49,24 +49,40 @@ L<Test-Against-Dev|https://metacpan.org/dist/Test-Against-Dev>.
 
 =head2 The Problem Addressed by This Library
 
-This problem is typically referred to as B<Blead Breaks CPAN> (or B<BBC> for
-short).  Perl 5 undergoes an annual development cycle characterized by (i)
-near daily commits to a L<GitHub (GH) repository|https://github.com/Perl/perl5>;
-and (ii) monthly releases whose version numbers follow the convention of
-C<5.43.0>, C<5.43.1>, etc., where the middle digits are always odd numbers.
-(Annual production releases and subsequent maintenance releases have
-even-numbered middle digits, I<e.g.>, C<5.42.0>, C<5.42.1>, etc.)  A monthly
-development release is essentially a roll-up of a month's worth of commits to
-the master branch known as B<blead> (pronounced I<"bleed">).  Changes in the
-Perl 5 code base have the potential to adversely impact the installability of
-existing CPAN libraries.  Hence, various individuals have, over the years,
-developed ways of testing those libraries against blead and reporting problems
-to those people actively involved in the ongoing development of the Perl 5
-core distribution -- people typically referred to as the Perl 5 Porters.
+In the development of Perl as a language we face a problem typically referred to as B<Blead Breaks CPAN> (or B<BBC> for
+short).  Perl 5 undergoes an annual development cycle characterized by:
 
-This library is intended as a contribution to those efforts.  It is intended
-to provide a monthly snapshot of the impact of Perl 5 core development on
-important CPAN libraries.
+=over 4
+
+=item *
+
+Nearly daily commits to a L<GitHub (GH) repository|https://github.com/Perl/perl5>.
+
+=item *
+
+Monthly development releases (tarballs) whose version numbers follow the convention of
+C<5.43.0>, C<5.43.1>, etc., where the middle digits are always odd numbers.
+
+=item *
+
+Annual production releases and subsequent maintenance releases whose version
+numbers have even-numbered middle digits, I<e.g.>, C<5.44.0>, C<5.44.1>, etc.
+
+=back
+
+A monthly development release is essentially a roll-up of a month's worth of
+commits to the master repository branch known as B<blead> (pronounced
+I<"bleed">).  Changes in the Perl 5 code base have the potential to adversely
+impact the installability of existing CPAN libraries.  Hence, various
+individuals have, over the years, developed ways of testing those libraries
+against blead and reporting problems to those people actively involved in the
+ongoing development of the Perl 5 core distribution.  The latter are typically
+referred to as "core developers" or as the "Perl 5 Porters."
+
+This library is intended as a contribution to those efforts by enabling the
+Perl 5 Porters to assess the impact of changes in the Perl 5 core distribution
+on important provide a monthly snapshot of the impact of core development on
+CPAN libraries well in advance of production and maintenance releases.
 
 =head2 The Approach Test-Against-Commit Takes
 
@@ -83,44 +99,62 @@ which the user deems important to her individual or organizational needs.
 Unlike its ancestor F<Test-Against-Dev>, this library is designed to test CPAN
 libraries against either Perl 5 monthly development releases or against
 individual commits to any branch of any GH repository holding the Perl 5 core
-distribution.  This library presumes that the user knows how to configure and
+distribution.  I<This library presumes that the user knows how to configure and
 build a F<perl> executable and how to run the core distribution's test suite.
 This library leaves the configuration, build and installation of a F<perl>
-executable to the user.  The scope of this library's activity begins at the
+executable to the user.>  The scope of this library's activity begins at the
 point that a F<perl> has been installed on disk, continues through
 installation of libraries needed for testing CPAN libraries against that
 executable to analysis of the results of that testing and presentation of
 those results in a usable form.
 
 While this library is currently focused on Perl 5 libraries publicly available
-on CPAN, it could probably be extended to test an organization's private
-libraries as well.  This functionality, however, has not yet been tested.
+on CPAN, it could in principle be extended to test an organization's private
+libraries as well.  This functionality, however, has not yet been implemented
+or tested.
 
 =head2 What Is the Result Produced by This Library?
 
-We will use the term I<run> to describe an instance of testing one or more
-CPAN libraries against a given installed F<perl> and the recording of data
-from that instance of testing.  Our objective is to be able to compare the
-results of different runs against different F<perl> executables.
+We will use the term I<run> to describe an instance of (i) testing one or more
+CPAN libraries against a given installed F<perl> and (ii) the recording of
+data from that instance of testing.  Our objective is to be able to compare
+the results of different runs against different F<perl> executables.
 
 For example, suppose a person working on the Perl core distribution wants to
 assess the impact of certain changes being proposed in a pull request on set
 of fifty specific CPAN libraries.  The user will first create a benchmark
 F<perl> probably built from a monthly development release, the GH tag
 associated with that release, or the GH commit from which the pull request was
-generated.  The user will use this library to conduct a run against that
+generated.  She will use this library to conduct a run against that
 executable.  In the run, each CPAN library will be graded C<PASS>, C<FAIL> (or
-C<NA> for "not applicable").  At a certain point in the course of the pull
-request's development, the user will build a new F<perl> executable and
-conduct a run against that one.  If a particular CPAN library receives a grade
-of C<PASS> during the first run and a grade of C<FAIL> during the next, it
-ought to be inspected for the cause of that breakage.  Sometimes the change in
-Perl 5 is wrong and needs to be reverted.  Sometimes the change in Perl 5 is
-correct (or, at least, plausible) but exposes sub-optimal code in the CPAN
-module.  Sometimes the failure is due to external conditions, such as a change
-in a C library on the testing platform.  There's no way to write code to
-figure out which situation -- or mix of situations -- we are in.  The human
-user must intervene at this point.
+C<NA> for "not applicable").
+
+At a certain point in the course of the pull request's development, the user
+will build a new F<perl> executable and conduct a run against that F<perl>.
+If a particular CPAN library receives a grade of C<PASS> during the first run
+and a grade of C<FAIL> during the next, the Perl 5 Porters will be asked to
+determine the cause of that breakage.
+
+=over 4
+
+=item *
+
+Sometimes the change in Perl 5 is wrong and needs to be reverted.
+
+=item *
+
+Sometimes the change in Perl 5 is correct (or, at least, plausible) but
+exposes sub-optimal code in the CPAN module.
+
+=item *
+
+Sometimes the failure is due to external conditions, such as a change in a C
+library on the testing platform.
+
+=back
+
+There's no way to write code to figure out which situation -- or mix of
+situations -- we are in.  The human user must intervene at this point.
 
 =head2 What Preparations Are Needed to Use This Library?
 
@@ -150,9 +184,8 @@ Perl 5 from source, <e.g.>:
         -Duseithreads \
         -Doptimize="-O2 -pipe -fstack-protector -fno-strict-aliasing"
 
-So, you should not configure without threads one month but with threads
-another month.  You should not switch to debugging builds half-way through the
-testing period.
+For instance, you should not configure without threads in one run but with threads
+in the next.  Nor should you switch from regular to debugging builds between threads.
 
 =item * Selection of CPAN Libraries for Testing
 
@@ -167,7 +200,7 @@ a starting point where those modules are working proprerly and assess their
 installability at later points.>
 
 Hence, once you decide to track a certain CPAN library, you should continue to
-include it in your list of modules to be tracked for the balance of the
+include it in your list of modules to be tracked for the balance of that year's 
 development cycle.  You can, it is true, B<add> additional modules to your
 list part way through the development cycle.  You simply won't have the same
 baseline data that you have for the modules you selected at the very
@@ -183,9 +216,9 @@ The CPAN river is a concept developed by Neil Bowers and other participants in
 the Perl Toolchain Gang and Perl QA Hackathons and Summits.  The concept
 starts from the premise that CPAN libraries upon which many other CPAN
 libraries depend are more important than those upon which few other libraries
-depend.  That's a useful definition of importance even if it is not strictly
+depend.  That's a useful definition of importance even if it is far from strictly
 true.  Modules "way upstream" feed modules and real-world code "farther
-downstream".  Hence, if Perl 5's development branch changes in a way such that
+downstream."  Hence, if Perl 5's development branch changes in a way such that
 "upstream" modules start to fail to configure, build, test and install
 correctly, then we have a potentially serious problem.
 
@@ -251,7 +284,8 @@ Test::Against::Commit object.
 The constructor merely verifies the existence of certain directories on your
 machine.  It does not install a F<perl> executable.  That is the user's
 responsibility.  The user will subsequently have to call the
-C<prepare_testing_directory()> to be fully ready to test.
+C<prepare_testing_directory()> and perhaps C<fetch_cpanm()> to be fully ready
+to test.
 
 =back
 
@@ -294,24 +328,25 @@ sub new {
 
 =item * Purpose
 
-Three methods which simply return the path to relevant directories:
+Three methods which simply return the path to relevant directories (along with
+I<short-hand versions> of their name):
 
 =over 4
 
-=item * application directory
+=item * application directory (I<application_dir>)
 
 The top-level directory for all code and data implemented by
 Test-Against-Commit.  It will typically hold 2 subdirectories: C<testing> and
 C<results>, described below.
 
-=item * testing directory
+=item * testing directory (I<testing_dir>)
 
 A directory which holds one or more subdirectories, each of which contains an
 installation of a perl executable.  That installation will start off with
 C<bin/> and C<lib/> subdirectories and C<./bin/perl -Ilib -v> will be called
 to demonstrate the presence of a viable F<perl>.
 
-=item * results directory
+=item * results directory (I<results_dir>)
 
 The directory under which all data created by runs of programs using
 Test::Against::Commit will be placed.  This will include data in JSON and
@@ -333,7 +368,8 @@ String holding a path to the named directory.
 
 =item * Comment
 
-TK
+These methods become available once a F<perl> executable has been installed
+and C<new()> has been run.
 
 =back
 
@@ -390,41 +426,14 @@ sub get_commit {
     return $self->{commit};
 }
 
-=pod
-
-So far the object just holds this (verified) data.
-
-{
-  application_dir => "/tmp/h4dDUN9MKv",
-  commit          => "blead",
-  results_dir     => "/tmp/h4dDUN9MKv/results",
-  testing_dir     => "/tmp/h4dDUN9MKv/testing",
-}
-
-We need to verify that there is a full 'commitdir' underneath testing_dir;
-that underneath that there are bin/ and lib/ and that we can call ./bin/perl.
-We then need to check for presence of ./bin/cpanm; if not found, install it
-via ./bin/cpan.  In the commitdir we need to need to confirm the existence of
-a .cpanm/ directory and we need to create a .cpanreporter/ directory.
-
-Only then will we be able to assemble a list of modules to be tested and use a
-run_cpanm method on them.
-
-Later: 
-* Confirm existence of perl installation directory, perl therein, bin and lib subdirs. DONE
-* Test for presence of bin/cpanm; install as needed.
-* Test for existence of .cpanm and .cpanreporter subdirs; create if needed.
-
-=cut
-
 =head2 C<prepare_testing_directory>
 
 =over 4
 
 =item * Purpose
 
-Determines whether the F<perl> executable has been installed -- if not, it's
-the user's responsibility to install it -- and whether this application has
+Determines whether the F<perl> executable has been installed -- I<if not, it's
+the user's responsibility to install it> -- and whether this application has
 the correct directory structure.
 
 =item * Arguments
@@ -478,24 +487,25 @@ sub prepare_testing_directory {
 
 =item * Purpose
 
-Three methods which simply return the path to relevant directories:
+Once C<prepare_testing_directory()> has been run, three additional methods
+become available to help the code determine where it is.
 
 =over 4
 
-=item * commit directory
+=item * commit directory (I<commit_dir>)
 
-A directory underneath C<testing> holding F<perl> installation.  This
+A directory underneath C<testing_dir> holding F<perl> installation.  This
 directory will start off life with two subdirectories, C<bin> and C<lib>.
 
-=item * bin directory
+=item * bin directory (I<bin_dir>)
 
-The directory underneath an individual C<commit> directory holding installed
+The directory underneath an individual C<commit_dir> directory holding installed
 executables such as F<perl>, F<cpan> and F<cpanm>.
 
-=item * lib directory
+=item * lib directory (I<lib_dir>)
 
-The directory underneath an individual C<commit> directory holding the
-libraries supporting the installed executables found in C<bin>.
+The directory underneath an individual C<commit_dir> directory holding the
+libraries supporting the installed executables found in the C<bin_dir>.
 
 =back
 
@@ -549,6 +559,31 @@ sub get_lib_dir {
         return $self->{lib_dir};
     }
 }
+
+
+=head2 C<get_this_perl()>
+
+=over 4
+
+=item * Purpose
+
+Identify the location of the F<perl> executable file being tested.
+
+=item * Arguments
+
+    $this_perl = $self->get_this_perl()
+
+=item * Return Value
+
+String holding the path to the F<perl> executable being tested.
+
+=item * Comment
+
+Will throw an exception if such a F<perl> executable has not yet been installed.
+
+=back
+
+=cut
 
 sub get_this_perl {
     my $self = shift;
@@ -712,13 +747,13 @@ Each interface takes a hash reference with the following elements:
 
 =item * C<module_list> B<OR> C<module_file>
 
-Mutually exclusive; must use one or the other but not both.
+Mutually exclusive; you may use one or the other but not both.
 
 The value of C<module_list> must be an array reference holding a list of
-modules for which you wish to track the impact of changes in the Perl 5 core
-distribution over time.  In either case the module names are spelled in
+modules for which you wish to assess the impact of changes in the Perl 5 core
+distribution.  In either case the module names are spelled in
 C<Some::Module> format -- I<i.e.>, double-colons -- rather than in
-C<Some-Module> format (hyphens).
+C<Some-Distribution> format (hyphens).
 
 =item * C<title>
 
@@ -742,8 +777,8 @@ of this file, using the arguments supplied, would be:
 
 =item * Comment
 
-The method guarantees the existence of several directories underneath the
-"results" directory discussed above.  These are illustrated as follows:
+The method confirms the existence of several directories underneath the
+I<results_dir> directory discussed above.  These are illustrated as follows:
 
     /path/to/application/results/
                         /results/perl-5.43.6/
@@ -1119,144 +1154,6 @@ sub _create_csv_file {
             if $args->{verbose};
     return $fcdvfile;
 }
-
-#=head2 C<new_from_existing_perl_cpanm()>
-#
-#=over 4
-#
-#=item * Purpose
-#
-#Alternate constructor to be used when you have already built a C<perl>
-#executable to be used in tracking Perl development and have installed a
-#C<cpanm> against that C<perl>.
-#
-#=item * Arguments
-#
-#    $self = Test::Against::Commit->new_from_existing_perl_cpanm( {
-#        path_to_perl    => '/path/to/perl-5.43.0/bin/perl',
-#        application_dir => '/path/to/application',
-#        perl_version    => 'perl-5.43.0',
-#    } );
-#
-#Takes a hash reference with the following elements:
-#
-#=over 4
-#
-#=item * C<path_to_perl>
-#
-#String holding path to an installed F<perl> executable.  Required.
-#
-#=item * C<application_dir>
-#
-#String holding path to the directory which will serve as the top level for
-#your application.  (Same meaning as in C<new()>.)  Required.
-#
-#=item * C<perl_version>
-#
-#String denoting a Perl release.  The string must start with C<perl->, followed
-#by the major version, minor version and patch version delimited by periods.
-#The major version is always C<5>.  (Same meaning as in
-#C<perform_tarball_download()>.)  Required.
-#
-#=item * C<verbose>
-#
-#Extra information provided on STDOUT.  Optional; defaults to being off;
-#provide a Perl-true value to turn it on.  Scope is limited to this method.
-#
-#=back
-#
-#=item * Return Value
-#
-#Test::Against::Commit object.
-#
-#=item * Comment
-#
-#As was the case with C<new()>, this method guarantees the existence of the
-#application directory and the F<testing> and F<results> directories
-#thereunder.  It also performs sanity checks for the paths to installed F<perl>
-#and F<cpanm>.
-#
-#If you already have a F<perl> installed which suffices for a monthly
-#development release, then you can start with this method, omit calls to
-#C<perform_tarball_download()>, C<configure_build_install_perl()> and
-#C<fetch_cpanm()> and go directly to C<run_cpanm()>.
-#
-#=back
-#
-#=cut
-#
-#sub new_from_existing_perl_cpanm {
-#    my ($class, $args) = @_;
-#    croak "new_from_existing_perl_cpanm: Must supply hash ref as argument"
-#        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
-#    my $verbose = delete $args->{verbose} || '';
-#    for my $el ( qw| path_to_perl application_dir perl_version | ) {
-#        croak "Need '$el' element in arguments hash ref"
-#            unless exists $args->{$el};
-#    }
-#    croak "Could not locate perl executable at '$args->{path_to_perl}'"
-#        unless (-x $args->{path_to_perl} and basename($args->{path_to_perl}) =~ m/^perl/);
-#
-#    my $data = { perl_version_pattern => $PERL_VERSION_PATTERN };
-#
-#    croak "'$args->{perl_version}' does not conform to pattern"
-#        unless $args->{perl_version} =~ m/$data->{perl_version_pattern}/;
-#    $data->{perl_version} = $args->{perl_version};
-#
-#    my $this_perl = $args->{path_to_perl};
-#
-#    croak "Could not locate $args->{application_dir}"
-#        unless (-d $args->{application_dir});
-#    $data->{application_dir} = $args->{application_dir};
-#
-#    for my $dir (qw| testing results |) {
-#        my $fdir = File::Spec->catdir($data->{application_dir}, $dir);
-#        unless (-d $fdir) { make_path($fdir, { mode => 0755 }); }
-#        croak "Could not locate $fdir" unless (-d $fdir);
-#        $data->{"${dir}_dir"} = $fdir;
-#    }
-#
-#    # Is the perl's parent directory bin/?
-#    # Is there a lib/ directory next to parent bin/?
-#    # Can the user write to directory lib/?
-#    # What is the parent of bin/ and lib/?
-#    # Is that parent writable (as user will need to create .cpanm/ and
-#    # .cpanreporter/ there)?
-#    # Is there a 'cpanm' executable located in bin?
-#
-#    my ($volume,$directories,$file) = File::Spec->splitpath($this_perl);
-#    my @directories = File::Spec->splitdir($directories);
-#    pop @directories if $directories[-1] eq '';
-#    croak "'$this_perl' not found in directory named 'bin/'"
-#        unless $directories[-1] eq 'bin';
-#    my $bin_dir = File::Spec->catdir(@directories);
-#
-#    my $lib_dir = File::Spec->catdir(@directories[0 .. ($#directories - 1)], 'lib');
-#    croak "Could not locate '$lib_dir'" unless (-d $lib_dir);
-#    croak "'$lib_dir' not writable" unless (-w $lib_dir);
-#
-#    my $commit_dir  = File::Spec->catdir(@directories[0 .. ($#directories - 1)]);
-#    croak "'$commit_dir' not writable" unless (-w $commit_dir);
-#
-#    my $this_cpanm = File::Spec->catfile($bin_dir, 'cpanm');
-#    croak "Could not locate cpanm executable at '$this_cpanm'"
-#        unless (-x $this_cpanm);
-#
-#    my $cpanm_dir = File::Spec->catdir($commit_dir, '.cpanm');
-#    croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
-#
-#    my %load = (
-#        commit_dir     => $commit_dir,
-#        bin_dir         => $bin_dir,
-#        lib_dir         => $lib_dir,
-#        this_perl       => $this_perl,
-#        this_cpanm      => $this_cpanm,
-#        cpanm_dir       => $cpanm_dir,
-#    );
-#    $data->{$_} = $load{$_} for keys %load;
-#
-#    return bless $data, $class;
-#}
 
 1;
 
