@@ -796,7 +796,6 @@ sub run_cpanm {
     croak "Could not locate $cpanreporter_dir" unless (-d $cpanreporter_dir);
     $self->{cpanreporter_dir} = $cpanreporter_dir;
 
-    say STDERR "AAA:";
     unless ($self->{cpanm_dir}) {
         say "Defining previously undefined cpanm_dir" if $verbose;
         my $cpanm_dir = File::Spec->catdir($self->get_commit_dir(), '.cpanm');
@@ -805,22 +804,14 @@ sub run_cpanm {
         $self->{cpanm_dir} = $cpanm_dir;
     }
 
-    say STDERR "BBB:";
     say "cpanm_dir: ", $self->get_cpanm_dir() if $verbose;
     local $ENV{PERL_CPANM_HOME} = $self->get_cpanm_dir();
 
-    say STDERR "CCC:";
     my @modules = ();
     if ($args->{module_list}) {
         @modules = @{$args->{module_list}};
     }
     elsif ($args->{module_file}) {
-    say STDERR "XXX:";
-#    # NEXT LINE IS NOT WORKING!
-#    #@modules = path($args->{module_file})->lines({ chomp => 1 });
-#        my $f = path($args->{module_file});
-#        @modules = $f->lines({ chomp => 1 });
-#    pp \@modules;
         open my $IN, '<', $args->{module_file}
             or croak "Could not open $args->{module_file} for reading";
         while (my $m = <$IN>) {
@@ -828,16 +819,6 @@ sub run_cpanm {
             push @modules, $m;
         }
         close $IN or croak "Could not close $args->{module_file} after reading";
-    pp \@modules;  # Generating an arrayref each of whose elements is empty string.
-
-# Getting:
-# ["", "", "", "", "", "", "", ""]
-# DDD: </home/jkeenan/var/tac/testing/03f24b8a08/bin/perl -I/home/jkeenan/var/tac/testing/03f24b8a08/lib /home/jkeenan/var/tac/testing/03f24b8a08/bin/cpanm        >
-# ! Finding  on cpanmetadb failed.
-# ! Finding  () on mirror http://www.cpan.org failed.
-# ! Couldn't find module or a distribution
-# /home/jkeenan/var/tac/testing/03f24b8a08/bin/cpanm exited with 1
-
     }
     my $libdir = $self->get_lib_dir();
     my @cmd = (
@@ -846,7 +827,6 @@ sub run_cpanm {
         $self->get_this_cpanm,
         @modules,
     );
-    say STDERR "DDD: <@cmd>";
     {
         local $@;
         my $rv;
@@ -1045,14 +1025,13 @@ sub analyze_json_logs {
             local $@;
             eval { $decoded = decode_json($f->slurp_utf8); };
             if ($@) {
-                say STDERR "JSON decoding problem in $flog: <$@>";
+                warn "JSON decoding problem in $flog: <$@>";
                 eval { $decoded = JSON->new->decode($f->slurp_utf8); };
             }
         }
         map { $this{$_} = $decoded->{$_} } ( qw| author distname grade | );
         $data{$decoded->{dist}} = \%this;
     }
-    #pp(\%data);
 
     # Now we create a CSV file (really ... a PSV)
     my $fcdvfile = $self->_create_csv_file( {
