@@ -1,12 +1,13 @@
 Revision history for Perl library Test::Against::Commit
 
-TK DATE
+0.14 Thu Sep 18 06:02:40 PM EDT 2025
+
     - CPAN distribution Test-Against-Dev transformed into Test-Against-Commit.
       Development moved to https://github.com/jkeenan/perl5-test-cpan-against-commit.
+
     - Remove all functionality for downloading and installing Perl from
-      release tarballs.  Provide a shell script to do that outside the scope
-      of Test::Against::Commit methods.  Also provide a shell script to build a perl
-      for testing from a git checkout.  This means less code to maintain in
+      release tarballs.  Provide shell scripts to do that outside the scope
+      of Test::Against::Commit methods.  This means less code to maintain in
       this library while permitting the user to install perl via any modality.
 
 0.13 Sun Sep 23 19:13:32 EDT 2018
