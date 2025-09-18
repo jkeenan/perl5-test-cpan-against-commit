@@ -55,12 +55,14 @@ short).  Perl 5 undergoes an annual development cycle characterized by:
 
 =item *
 
-Nearly daily commits to a L<GitHub (GH) repository|https://github.com/Perl/perl5>.
+Commits on a near daily basis to a L<GitHub (GH)
+repository|https://github.com/Perl/perl5>.
 
 =item *
 
-Monthly development releases (tarballs) whose version numbers follow the convention of
-C<5.43.0>, C<5.43.1>, etc., where the middle digits are always odd numbers.
+Monthly development releases (tarballs) whose version numbers follow the
+convention of C<5.43.0>, C<5.43.1>, etc., where the middle digits are always
+odd numbers.
 
 =item *
 
@@ -85,7 +87,7 @@ CPAN libraries well in advance of production and maintenance releases.
 
 =head2 The Approach Test-Against-Commit Takes
 
-Unlike other efforts, F<Test-Against-Commit> does not depend on test reports
+Unlike other efforts, F<Test-Against-Commit> does I<not> depend on test reports
 sent to L<CPANtesters.org|http://www.cpantesters.org/>.  Hence, it should be
 unaffected by any technical problems which that site may face.  As a
 consequence, however, a user of this library must be willing to maintain more
@@ -179,12 +181,80 @@ results may reflect changes in that configuration rather than changes in Perl
 By "Perl 5 configuration" we mean the way one calls F<Configure> when building
 Perl 5 from source, <e.g.>:
 
+    sh ./Configure -des -Dusedevel
+
+or:
+
     sh ./Configure -des -Dusedevel \
         -Duseithreads \
         -Doptimize="-O2 -pipe -fstack-protector -fno-strict-aliasing"
 
 For instance, you should not configure without threads in one run but with threads
 in the next.  Nor should you switch from regular to debugging builds between threads.
+
+=item * F<perl> Executable Installation Location
+
+As noted above, this library leaves to the user the choice of a I<way to get
+the Perl source code> and the decision of I<how to configure> an individual
+F<perl> executable.  It also leaves to the user, with one caveat, the decision
+of I<where> to install that executable on disk.  That caveat is that the
+F<perl> installation should reside in a directory named F<testing> which in
+turn sits underneath a directory which we'll refer to as the I<application
+directory>.  The user will have to manually create the I<application
+directory> as well as the F<testing> directory underneath.
+
+Example:  Suppose you want all your Test-Against-Commit data to sit in the directory tree F</path/to/application>:
+
+    /path/to/application
+
+You will need a subdirectory called F<testing> underneath that:
+
+    /path/to/application
+    /path/to/application/testing
+
+You can create these directories with this command:
+
+    $ mkdir -p /path/to/application/testing
+
+Now suppose that for one project you want to use as your baseline a F<perl>
+built from a F<git> checkout at commit C<03f24b8a08>, and for a I<different>
+project you want to use as your baseline a F<perl> built from a maintenance
+release tarball of C<perl-5.40.2>.  That means you will I<ultimately> want a
+directory structure like this:
+
+    /path/to/application/
+    /path/to/application/testing/
+    /path/to/application/testing/03f24b8a08/
+    /path/to/application/testing/perl-5.40.2/
+
+Using the second of the C<Configure> examples above, for the first project you would configure with:
+
+    $ sh ./Configure -des -Dusedevel \
+        -Duseithreads \
+        -Doptimize="-O2 -pipe -fstack-protector -fno-strict-aliasing"
+        -Dprefix=/path/to/application/testing/03f24b8a08
+
+For the second project you would configure with:
+
+    $ sh ./Configure -des -Dusedevel \
+        -Duseithreads \
+        -Doptimize="-O2 -pipe -fstack-protector -fno-strict-aliasing"
+        -Dprefix=/path/to/application/testing/perl-5.40.2
+
+After running C<sh ./Configure>, you would then call in each project:
+
+    $ make install
+
+You would end up with a directory structure the top of which would look like this:
+
+    /path/to/application/
+    /path/to/application/testing/
+    /path/to/application/testing/03f24b8a08/
+    /path/to/application/testing/03f24b8a08/bin
+    /path/to/application/testing/03f24b8a08/lib
+    /path/to/application/testing/perl-5.40.2/
+    /path/to/application/testing/perl-5.40.2/bin
+    /path/to/application/testing/perl-5.40.2/lib
 
 =item * Selection of CPAN Libraries for Testing
 
@@ -269,8 +339,11 @@ String holding path to the directory which will serve as the top level for your 
 =item * C<commit>
 
 String holding a name for the specific F<perl> executable against which you
-will be attempting to install CPAN modules.  This could be a F<git> commit ID
-(SHA), a F<git> tag or the name of a F<git> branch.
+will be attempting to install CPAN modules.  If you are building F<perl> from
+a F<git> checkout, this should be the F<git> commit ID (SHA), F<git> tag or
+F<git> branch name from which you are starting.  If you are building F<perl>
+from a release tarball, consider using a string such as C<perl-5.42.0> from
+the tarball's basename.
 
 =back
 
