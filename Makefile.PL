@@ -44,14 +44,14 @@ WriteMakefile(
         'meta-spec' => { version => 2 },
         dynamic_config => 1,
         resources => {
-            homepage => 'http://thenceforward.net/perl/modules/Test-Against-Commit/',
+            homepage => 'https://thenceforward.net/perl/modules/Test-Against-Commit/',
             repository => {
-                url => 'https://github.com/jkeenan/test-against-dev.git',
-                web => 'https://github.com/jkeenan/test-against-dev',
+                url => 'https://github.com/jkeenan/perl5-test-cpan-against-commit.git',
+                web => 'https://github.com/jkeenan/perl5-test-cpan-against-commit',
                 type => 'git',
             },
             bugtracker => {
-                web => 'https://rt.cpan.org/Public/Dist/Display.html?Name=Test-Against-Commit',
+                web => 'https://github.com/jkeenan/perl5-test-cpan-against-commit/issues',
             },
         },
     })),

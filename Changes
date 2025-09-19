@@ -1,5 +1,9 @@
 Revision history for Perl library Test::Against::Commit
 
+0.15 Thu Sep 18 08:58:52 PM EDT 2025
+
+    - Correct repository URLs only; no functional changes
+
 0.14 Thu Sep 18 06:02:40 PM EDT 2025
 
     - CPAN distribution Test-Against-Dev transformed into Test-Against-Commit.
