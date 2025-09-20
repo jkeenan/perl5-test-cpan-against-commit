@@ -41,7 +41,7 @@ Reference to a hash with 3 required elements and 1 optional element.
 
 =over 4
 
-=item * C<path_to_cpanm_build_log>
+=item * C<cpanm_build_log>
 
 String holding absolute path to an already existing F<cpanm> build log file or
 to a symlink to such a file.  Required.
@@ -102,17 +102,19 @@ sub new {
     my ($class, $args) = @_;
     croak "Must supply hash ref as argument"
         unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
+pp $args;
     my $verbose = delete $args->{verbose} || '';
     my $data = {};
     for my $el ( qw|
-        path_to_cpanm_build_log
+        cpanm_build_log
         title
         results_dir
     | ) {
         croak "Need '$el' element in arguments hash ref"
             unless exists $args->{$el};
     }
-    my $blp = $args->{path_to_cpanm_build_log};
+    my $blp = $args->{cpanm_build_log};
+say STDERR "BBB: $blp";
     croak "Could not locate cpanm build.log at '$blp'" unless (-l $blp or -f $blp);
 
     unless (defined $args->{title} and length $args->{title}) {
@@ -137,7 +139,7 @@ sub new {
     my ($cpanm_dir, $real_log);
     if (! -l $blp) {
 #        # If we've supplied the full path to the build.log file itself
-#        say "Value for 'path_to_cpanm_build_log' is not a symlink" if $verbose;
+#        say "Value for 'cpanm_build_log' is not a symlink" if $verbose;
 #        my ($volume,$directories,$file) = File::Spec->splitpath($blp);
 #        my @directories = File::Spec->splitdir($directories);
 #        pop @directories if $directories[-1] eq '';
@@ -165,7 +167,7 @@ sub new {
     }
     else {
         # If we've only supplied the full path to the symlink to the build.log
-        say "Value for 'path_to_cpanm_build_log' is a symlink" if $verbose;
+        say "Value for 'cpanm_build_log' is a symlink" if $verbose;
         $real_log = readlink($blp);
         croak "Could not locate target of build.log symlink" unless (-f $real_log);
         $cpanm_dir = dirname($blp);
@@ -216,7 +218,7 @@ sub new {
 #    my $verbose = delete $args->{verbose} || '';
 #    my $data = { perl_version_pattern => $PERL_VERSION_PATTERN };
 #    for my $el ( qw|
-#        path_to_cpanm_build_log
+#        cpanm_build_log
 #        perl_version
 #        title
 #        results_dir
@@ -224,10 +226,10 @@ sub new {
 #        croak "Need '$el' element in arguments hash ref"
 #            unless exists $args->{$el};
 #    }
-#    my $blp = $args->{path_to_cpanm_build_log};
+#    my $blp = $args->{cpanm_build_log};
 #    croak "Could not locate cpanm build.log at '$blp'" unless (-l $blp or -f $blp);
 #        # Check for validity of this value down below
-#        #$data->{path_to_cpanm_build_log} = $blp;
+#        #$data->{cpanm_build_log} = $blp;
 #
 #    unless (defined $args->{title} and length $args->{title}) {
 #        croak "Must supply value for 'title' element";
@@ -247,7 +249,7 @@ sub new {
 #    my ($cpanm_dir);
 #    if (! -l $blp) {
 #        # If we've supplied the full path to the build.log file itself
-#        say "Value for 'path_to_cpanm_build_log' is not a symlink" if $verbose;
+#        say "Value for 'cpanm_build_log' is not a symlink" if $verbose;
 #        my ($volume,$directories,$file) = File::Spec->splitpath($blp);
 #        my @directories = File::Spec->splitdir($directories);
 #        pop @directories if $directories[-1] eq '';
@@ -275,7 +277,7 @@ sub new {
 #    }
 #    else {
 #        # If we've only supplied the full path to the symlink to the build.log
-#        say "Value for 'path_to_cpanm_build_log' is a symlink" if $verbose;
+#        say "Value for 'cpanm_build_log' is a symlink" if $verbose;
 #        my $real_log = readlink($blp);
 #        croak "Could not locate target of build.log symlink" unless (-f $real_log);
 #        $cpanm_dir = dirname($blp);
