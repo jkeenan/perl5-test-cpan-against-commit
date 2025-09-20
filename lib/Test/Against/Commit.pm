@@ -1037,8 +1037,24 @@ sub analyze_cpanm_build_logs {
     croak "Could not locate $self->{analysis_dir}" unless (-d $self->{analysis_dir});
 
     my ($fh, $working_log) = tempfile();
+    # PROBLEM: If the cpanm build log is large (which it will be if I'm
+    # testing 1000s of CPAN distros), then even the gzipped build log will be
+    # too big to work with.  With 2700+ modules installed, the build log was
+    # 29471391050 bytes (nearly 3 gigabytes) in size.  Compressing it only got
+    # me down to 152052014 bytes (152 megabytes); uncompressing it in next
+    # line slowed machine down to point of needing a hard boot.
     system(qq|gunzip -c $gzlog > $working_log|)
         and croak "Unable to gunzip $gzlog to $working_log";
+
+    # PROBLEM (anticipated):  The .json files are mostly taken up with the
+    # content of the 'test_output' KVP.  But I'm not interested in that key,
+    # as I'm not using it in a CSV file.  If I *were* interested in the
+    # test_output of a FAILed file, I'd debug it either in the
+    # testing/<commit>/.cpanm/work directory or, better still, somewhere else
+    # outside the tree of an appliction using this library.
+
+    # So, perhaps I should revise CPAN::cpanminus::reporter::RetainReports to
+    # have an option to not include test_output KVP in reports.
 
     my $reporter = CPAN::cpanminus::reporter::RetainReports->new(
       force => 1, # ignore mtime check on build.log
