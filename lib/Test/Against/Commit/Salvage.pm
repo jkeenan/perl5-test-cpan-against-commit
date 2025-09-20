@@ -5,11 +5,11 @@ our $VERSION = '0.15';
 our @ISA = ('Test::Against::Commit');
 use Carp;
 #use Cwd;
-#use File::Basename ( qw| dirname | );
+use File::Basename ( qw| dirname | );
 #use File::Path ( qw| make_path | );
 use File::Spec;
 #use File::Temp ( qw| tempdir tempfile | );
-#use Data::Dump ( qw| dd pp | );
+use Data::Dump ( qw| dd pp | );
 use Test::Against::Commit;
 
 =head1 NAME
@@ -112,26 +112,30 @@ sub new {
         croak "Need '$el' element in arguments hash ref"
             unless exists $args->{$el};
     }
-#    my $blp = $args->{path_to_cpanm_build_log};
-#    croak "Could not locate cpanm build.log at '$blp'" unless (-l $blp or -f $blp);
-#
-#    unless (defined $args->{title} and length $args->{title}) {
-#        croak "Must supply value for 'title' element";
-#    }
-#    $data->{title} = $args->{title};
-#
+    my $blp = $args->{path_to_cpanm_build_log};
+    croak "Could not locate cpanm build.log at '$blp'" unless (-l $blp or -f $blp);
+
+    unless (defined $args->{title} and length $args->{title}) {
+        croak "Must supply value for 'title' element";
+    }
+    $data->{title} = $args->{title};
+
+    unless (defined $args->{results_dir} and -d $args->{results_dir}) {
+        croak "Could not locate results_dir $args->{results_dir}";
+    }
+
 #    croak "'$args->{perl_version}' does not conform to pattern"
 #        unless $args->{perl_version} =~ m/$data->{perl_version_pattern}/;
 #    $data->{perl_version} = $args->{perl_version};
-#
-#    # If $blp is a symlink, then we need to be able to -f its target.
-#    # Once we've found its target, or if it's not a symlink, we need to parse
-#    # its path in order to establish cpanm_dir:
-#    #     .../.cpanm/work/1234567890.12345/build.log
-#    # If we can't do any of this, we croak.
-#
-#    my ($cpanm_dir);
-#    if (! -l $blp) {
+
+    # If $blp is a symlink, then we need to be able to -f its target.
+    # Once we've found its target, or if it's not a symlink, we need to parse
+    # its path in order to establish cpanm_dir:
+    #     .../.cpanm/work/1234567890.12345/build.log
+    # If we can't do any of this, we croak.
+
+    my ($cpanm_dir, $real_log);
+    if (! -l $blp) {
 #        # If we've supplied the full path to the build.log file itself
 #        say "Value for 'path_to_cpanm_build_log' is not a symlink" if $verbose;
 #        my ($volume,$directories,$file) = File::Spec->splitpath($blp);
@@ -158,32 +162,47 @@ sub new {
 #            # Keep TAD::gzip_cpanm_build_log() happy
 #            symlink($blp, $possible_symlink) or croak "Unable to create symlink $possible_symlink";
 #        }
-#    }
-#    else {
-#        # If we've only supplied the full path to the symlink to the build.log
-#        say "Value for 'path_to_cpanm_build_log' is a symlink" if $verbose;
-#        my $real_log = readlink($blp);
-#        croak "Could not locate target of build.log symlink" unless (-f $real_log);
-#        $cpanm_dir = dirname($blp);
-#        say "cpanm_dir: $cpanm_dir" if $verbose;
-#    }
-#
-#    my $vresults_dir = File::Spec->catdir($args->{results_dir}, $data->{perl_version});
-#    my $buildlogs_dir = File::Spec->catdir($vresults_dir, 'buildlogs');
-#    my $analysis_dir = File::Spec->catdir($vresults_dir, 'analysis');
-#    my $storage_dir = File::Spec->catdir($vresults_dir, 'storage');
-#    for my $dir ( $vresults_dir, $buildlogs_dir, $analysis_dir, $storage_dir ) {
-#        croak "Could not locate $dir" unless -d $dir;
-#    }
-#
-#    my %load = (
-#        cpanm_dir           => $cpanm_dir,
-#        vresults_dir        => $vresults_dir,
-#        buildlogs_dir       => $buildlogs_dir,
-#        analysis_dir        => $analysis_dir,
-#        storage_dir         => $storage_dir,
-#    );
-#    $data->{$_} = $load{$_} for keys %load;
+    }
+    else {
+        # If we've only supplied the full path to the symlink to the build.log
+        say "Value for 'path_to_cpanm_build_log' is a symlink" if $verbose;
+        $real_log = readlink($blp);
+        croak "Could not locate target of build.log symlink" unless (-f $real_log);
+        $cpanm_dir = dirname($blp);
+        say "cpanm_dir: $cpanm_dir" if $verbose;
+    }
+
+    # Given a verified cpanm_dir and build.log, we should be able to parse the
+    # directory to calculate the 'commit' and then the other results
+    # directories we'll need.
+    # /home/jkeenan/var/tac/testing/23ae7f95ea/.cpanm/build.log
+
+    #my ($volume,$directories,$file) = File::Spec->splitpath($real_log);
+    my ($volume,$directories,$file) = File::Spec->splitpath($blp);
+    #pp $directories;
+    my @dirs = File::Spec->splitdir($directories);
+    my $popped = pop @dirs if $dirs[-1] eq '';
+    my $shifted = shift @dirs if $dirs[0] eq '';
+    #pp \@dirs;
+    my $commit = $dirs[-2];
+    #pp $commit;
+
+    my $vresults_dir = File::Spec->catdir($args->{results_dir}, $commit);
+    my $buildlogs_dir = File::Spec->catdir($vresults_dir, 'buildlogs');
+    my $analysis_dir = File::Spec->catdir($vresults_dir, 'analysis');
+    my $storage_dir = File::Spec->catdir($vresults_dir, 'storage');
+    for my $dir ( $vresults_dir, $buildlogs_dir, $analysis_dir, $storage_dir ) {
+        croak "Could not locate $dir" unless -d $dir;
+    }
+
+    my %load = (
+        cpanm_dir           => $cpanm_dir,
+        vresults_dir        => $vresults_dir,
+        buildlogs_dir       => $buildlogs_dir,
+        analysis_dir        => $analysis_dir,
+        storage_dir         => $storage_dir,
+    );
+    $data->{$_} = $load{$_} for keys %load;
 
     return bless $data, $class;
 }
