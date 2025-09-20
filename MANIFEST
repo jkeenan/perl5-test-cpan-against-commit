@@ -1,5 +1,6 @@
 Changes
 lib/Test/Against/Commit.pm
+lib/Test/Against/Commit/Salvage.pm
 LICENSE
 Makefile.PL
 MANIFEST			This list of files
