@@ -1032,7 +1032,6 @@ sub analyze_cpanm_build_logs {
         unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
     my $verbose = delete $args->{verbose} || '';
 
-#    my $gzlog = $self->{gzlog};
     unless (-d $self->{analysis_dir}) { make_path($self->{analysis_dir}, { mode => 0755 }); }
     croak "Could not locate $self->{analysis_dir}" unless (-d $self->{analysis_dir});
 
@@ -1043,9 +1042,6 @@ sub analyze_cpanm_build_logs {
     # 29471391050 bytes (nearly 3 gigabytes) in size.  Compressing it only got
     # me down to 152052014 bytes (152 megabytes); uncompressing it in next
     # line slowed machine down to point of needing a hard boot.
-
-#    system(qq|gunzip -c $gzlog > $working_log|)
-#        and croak "Unable to gunzip $gzlog to $working_log";
 
     # PROBLEM (anticipated):  The .json files are mostly taken up with the
     # content of the 'test_output' KVP.  But I'm not interested in that key,
@@ -1074,7 +1070,7 @@ sub analyze_cpanm_build_logs {
     local *CPAN::cpanminus::reporter::RetainReports::_check_cpantesters_config_data = sub { 1 };
     $reporter->set_report_dir($self->{analysis_dir});
     say STDERR "ZZZ: ", `date`;
-    $reporter->run;
+    $reporter->run;  # This process is being killed by CPU!
     say STDERR "AAA: ", `date`;
     say "See results in $self->{analysis_dir}" if $verbose;
 
