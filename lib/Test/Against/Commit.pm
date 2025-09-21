@@ -693,16 +693,6 @@ throw exceptions.
 
 =cut
 
-#sub get_commit_dir {
-#    my $self = shift;
-#    if (! defined $self->{commit_dir}) {
-#        croak "commit directory has not yet been defined; have you installed perl?";
-#    }
-#    else {
-#        return $self->{commit_dir};
-#    }
-#}
-
 sub get_bin_dir {
     my $self = shift;
     if (! defined $self->{bin_dir}) {
