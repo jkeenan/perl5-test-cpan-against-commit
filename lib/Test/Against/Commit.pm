@@ -26,7 +26,7 @@ Test::Against::Commit - Test CPAN modules against Perl dev releases
     my $self = Test::Against::Commit->new( {
         application_dir => '/path/to/application',
         project         => 'business_project',
-        commit          => <commit_ID_tag_or_branch>,
+        install          => <commit_ID_tag_or_branch>,
     } );
 
     my $this_cpanm = $self->fetch_cpanm( { verbose => 1 } );
@@ -315,7 +315,7 @@ Note that at this point we have not yet created the I<results directory> ...
     $ ls -l ./all-tad-projects/goto-fatal/23ae7f95ea/results
     ... No such file or directory
 
-... but no worries; Test-Against-commit methods will handle that.
+... but no worries; Test-Against-Commit methods will handle that.
 
 =item * Selection of CPAN Libraries for Testing
 
@@ -387,7 +387,7 @@ directories thereunder:  F<testing/> and F<results/>.
     my $self = Test::Against::Commit->new( {
         application_dir => '/path/to/application',
         project => 'goto-fatal'
-        commit => '23ae7f95ea',
+        install => '23ae7f95ea',
     } );
 
 Takes a hash reference with the following elements:
@@ -403,7 +403,7 @@ projects using Test-Against-Commit technology.
 
 String holding a short name for your current business project.
 
-=item * C<commit>
+=item * C<install>
 
 String holding a name for the specific I<installation> of F<perl> against which you
 will be attempting to install CPAN modules.  If you have built F<perl> from
@@ -437,8 +437,8 @@ sub new {
         unless ref($args) eq 'HASH';
     croak "Hash ref must contain 'application_dir' element"
         unless $args->{application_dir};
-    croak "Hash ref must contain 'commit' element"
-        unless $args->{commit};
+    croak "Hash ref must contain 'install' element"
+        unless $args->{install};
     croak "Could not locate application directory $args->{application_dir}"
         unless (-d $args->{application_dir});
     croak "Must supply name for project"
@@ -448,7 +448,7 @@ sub new {
     my $project_dir = File::Spec->catdir($args->{application_dir}, $args->{project});
     unless (-d $project_dir) { make_path($project_dir, { mode => 0755 }); }
     $verified{project_dir} = $project_dir;
-    my $install_dir = File::Spec->catdir($project_dir, $args->{commit});
+    my $install_dir = File::Spec->catdir($project_dir, $args->{install});
     unless (-d $install_dir) { make_path($install_dir, { mode => 0755 }); }
     $verified{install_dir} = $install_dir;
 
@@ -470,7 +470,7 @@ sub new {
     return bless $data, $class;
 }
 
-=head2 C<get_application_dir() get_project_dir() get_commit_dir() get_testing_dir() get_results_dir()>
+=head2 C<get_application_dir() get_project_dir() get_install_dir() get_testing_dir() get_results_dir()>
 
 =over 4
 
@@ -491,7 +491,7 @@ project using Test-Against-Commit technology.
 
 TK
 
-=item * commit directory (I<commit_dir>)
+=item * install directory (I<install_dir>)
 
 TK
 
@@ -516,7 +516,7 @@ pipe-separated-value (PSV) formats.
 
     $testing_dir = $self->get_project_dir();
 
-    $testing_dir = $self->get_commit_dir();
+    $testing_dir = $self->get_install_dir();
 
     $testing_dir = $self->get_testing_dir();
 
@@ -545,9 +545,9 @@ sub get_project_dir {
     return $self->{project_dir};
 }
 
-sub get_commit_dir {
+sub get_install_dir {
     my $self = shift;
-    return $self->{commit_dir};
+    return $self->{install_dir};
 }
 
 sub get_testing_dir {
@@ -560,7 +560,7 @@ sub get_results_dir {
     return $self->{results_dir};
 }
 
-=head2 C<get_commit()>
+=head2 C<get_install()>
 
 =over 4
 
@@ -572,7 +572,7 @@ build this F<perl> from a F<git> checkout, this should be one of the commit ID
 
 =item * Arguments
 
-    my $commit = $self->get_commit();
+    my $install = $self->get_install();
 
 =item * Return Value
 
@@ -580,7 +580,7 @@ String holding a F<git> commit ID, tag or branch name.
 
 =item * Comment
 
-Since C<commit> is one of the key-value pairs we are handing to C<new()>, this
+Since C<install> is one of the key-value pairs we are handing to C<new()>, this
 method essentially just gives us back what we already told it.  However, we
 will use it internally later to derive the path to the installed F<perl>
 against which we are trying to install modules.
@@ -591,9 +591,9 @@ TK:  What about when we're building from a tarball?
 
 =cut
 
-sub get_commit {
+sub get_install {
     my $self = shift;
-    return $self->{commit};
+    return $self->{install};
 }
 
 =head2 C<prepare_testing_directory>
@@ -625,15 +625,15 @@ TK
 sub prepare_testing_directory {
     my $self = shift;
 
-    my $commit_dir = File::Spec->catdir($self->{testing_dir}, $self->{commit});
-    if (-d $commit_dir) {
-        $self->{commit_dir} = $commit_dir;
+    my $install_dir = File::Spec->catdir($self->{testing_dir}, $self->{install});
+    if (-d $install_dir) {
+        $self->{install_dir} = $install_dir;
     }
     else {
-        croak "Could not locate $commit_dir; have you built and installed a perl executable?";
+        croak "Could not locate $install_dir; have you built and installed a perl executable?";
     }
     for my $dir (qw| bin lib|) {
-        my $subdir = File::Spec->catdir($self->{commit_dir}, $dir);
+        my $subdir = File::Spec->catdir($self->{install_dir}, $dir);
         if (-d $subdir) {
             my $this = $dir . '_dir';
             $self->{$this} = $subdir;
@@ -664,12 +664,12 @@ become available to help the code determine where it is.
 
 =item * bin directory (I<bin_dir>)
 
-The directory underneath an individual C<commit_dir> directory holding installed
+The directory underneath an individual C<install_dir> directory holding installed
 executables such as F<perl>, F<cpan> and F<cpanm>.
 
 =item * lib directory (I<lib_dir>)
 
-The directory underneath an individual C<commit_dir> directory holding the
+The directory underneath an individual C<install_dir> directory holding the
 libraries supporting the installed executables found in the C<bin_dir>.
 
 =back
@@ -810,7 +810,7 @@ Returns the Test::Against::Commit object, which now holds additional data.
 
 The F<cpanm> executable's location can subsequently be accessed by calling
 C<$self->get_this_cpanm()>.  The method also guarantees the existence of a
-F<.cpanm> directory underneath the commit directory, I<i.e.,> side-by-side
+F<.cpanm> directory underneath the install directory, I<i.e.,> side-by-side
 with C<bin> and C<lib>.  This directory can subsequently be accessed by
 calling C<$self->get_cpanm_dir()>.
 
@@ -824,7 +824,7 @@ sub fetch_cpanm {
         unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
     my $verbose = delete $args->{verbose} || '';
 
-    my $cpanm_dir = File::Spec->catdir($self->get_commit_dir(), '.cpanm');
+    my $cpanm_dir = File::Spec->catdir($self->get_install_dir(), '.cpanm');
     unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
     croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
     $self->{cpanm_dir} = $cpanm_dir;
@@ -979,14 +979,14 @@ sub run_cpanm {
         $self->setup_results_directories();
     }
 
-    my $cpanreporter_dir = File::Spec->catdir($self->get_commit_dir(), '.cpanreporter');
+    my $cpanreporter_dir = File::Spec->catdir($self->get_install_dir(), '.cpanreporter');
     unless (-d $cpanreporter_dir) { make_path($cpanreporter_dir, { mode => 0755 }); }
     croak "Could not locate $cpanreporter_dir" unless (-d $cpanreporter_dir);
     $self->{cpanreporter_dir} = $cpanreporter_dir;
 
     unless ($self->{cpanm_dir}) {
         say "Defining previously undefined cpanm_dir" if $verbose;
-        my $cpanm_dir = File::Spec->catdir($self->get_commit_dir(), '.cpanm');
+        my $cpanm_dir = File::Spec->catdir($self->get_install_dir(), '.cpanm');
         unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
         croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
         $self->{cpanm_dir} = $cpanm_dir;
@@ -1032,7 +1032,7 @@ sub run_cpanm {
 
 sub setup_results_directories {
     my $self = shift;
-    my $vresults_dir = File::Spec->catdir($self->get_results_dir, $self->get_commit());
+    my $vresults_dir = File::Spec->catdir($self->get_results_dir, $self->get_install());
     my $buildlogs_dir = File::Spec->catdir($vresults_dir, 'buildlogs');
     my $analysis_dir = File::Spec->catdir($vresults_dir, 'analysis');
     my $storage_dir = File::Spec->catdir($vresults_dir, 'storage');
@@ -1053,7 +1053,7 @@ sub gzip_cpanm_build_log {
         unless (-l $build_log_link);
     my $real_log = readlink($build_log_link);
 
-    my $pattern = qr/^$self->{title}\.$self->{commit}\.build\.log\.gz$/;
+    my $pattern = qr/^$self->{title}\.$self->{install}\.build\.log\.gz$/;
     $self->{gzlog_pattern} = $pattern;
     opendir my $DIRH, $self->{buildlogs_dir} or croak "Unable to open buildlogs_dir for reading";
     my @files_found = grep { -f $_ and $_ =~ m/$pattern/ } readdir $DIRH;
@@ -1068,7 +1068,7 @@ sub gzip_cpanm_build_log {
 
     my $gzipped_build_log = join('.' => (
         $self->{title},
-        $self->{commit},
+        $self->{install},
         'build',
         'log',
         'gz'
@@ -1246,7 +1246,7 @@ sub _archive_log_files {
     # TODO: Is this file name self-documenting enough?  Need datestamp?
     my $output = join('.' => (
         $self->{title},
-        $self->{commit},
+        $self->{install},
         'log',
         'json',
         'tar',
@@ -1272,14 +1272,14 @@ sub _create_csv_file {
 
     my $cdvfile = join('.' => (
         $self->{title},
-        $self->{commit},
+        $self->{install},
         (($args->{sep_char} eq ',') ? 'csv' : 'psv'),
     ) );
     my $fcdvfile = File::Spec->catfile($self->{storage_dir}, $cdvfile);
     say "Output will be: $fcdvfile" if $args->{verbose};
 
     my @fields = ( qw| author distname grade | );
-    my $commit = $self->{commit};
+    my $install = $self->{install};
     my $columns = [
         'dist',
         @fields,
