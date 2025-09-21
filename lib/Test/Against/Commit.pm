@@ -470,13 +470,13 @@ sub new {
     return bless $data, $class;
 }
 
-=head2 C<get_application_dir() get_testing_dir() get_results_dir()>
+=head2 C<get_application_dir() get_project_dir() get_commit_dir() get_testing_dir() get_results_dir()>
 
 =over 4
 
 =item * Purpose
 
-Three methods which simply return the path to relevant directories (along with
+Methods which simply return the path to relevant directories (along with
 I<short-hand versions> of their name):
 
 =over 4
@@ -484,8 +484,16 @@ I<short-hand versions> of their name):
 =item * application directory (I<application_dir>)
 
 The top-level directory for all code and data implemented by
-Test-Against-Commit.  It will typically hold 2 subdirectories: C<testing> and
-C<results>, described below.
+Test-Against-Commit.  It will typically hold 1 subdirectory for each business
+project using Test-Against-Commit technology.
+
+=item * project directory (I<project_dir>)
+
+TK
+
+=item * commit directory (I<commit_dir>)
+
+TK
 
 =item * testing directory (I<testing_dir>)
 
@@ -505,6 +513,10 @@ pipe-separated-value (PSV) formats.
 =item * Arguments
 
     $application_dir = $self->get_application_dir();
+
+    $testing_dir = $self->get_project_dir();
+
+    $testing_dir = $self->get_commit_dir();
 
     $testing_dir = $self->get_testing_dir();
 
@@ -526,6 +538,16 @@ and C<new()> has been run.
 sub get_application_dir {
     my $self = shift;
     return $self->{application_dir};
+}
+
+sub get_project_dir {
+    my $self = shift;
+    return $self->{project_dir};
+}
+
+sub get_commit_dir {
+    my $self = shift;
+    return $self->{commit_dir};
 }
 
 sub get_testing_dir {
@@ -629,21 +651,16 @@ sub prepare_testing_directory {
     return $self;
 }
 
-=head2 C<get_commit_dir() <get_bin_dir() get_lib_dir()>
+=head2 C<get_bin_dir() get_lib_dir()>
 
 =over 4
 
 =item * Purpose
 
-Once C<prepare_testing_directory()> has been run, three additional methods
+Once C<prepare_testing_directory()> has been run, two additional methods
 become available to help the code determine where it is.
 
 =over 4
-
-=item * commit directory (I<commit_dir>)
-
-A directory underneath C<testing_dir> holding F<perl> installation.  This
-directory will start off life with two subdirectories, C<bin> and C<lib>.
 
 =item * bin directory (I<bin_dir>)
 
@@ -658,8 +675,6 @@ libraries supporting the installed executables found in the C<bin_dir>.
 =back
 
 =item * Arguments
-
-    $commit_dir = $self->get_commit_dir();
 
     $bin_dir = $self->get_bin_dir();
 
@@ -678,15 +693,15 @@ throw exceptions.
 
 =cut
 
-sub get_commit_dir {
-    my $self = shift;
-    if (! defined $self->{commit_dir}) {
-        croak "commit directory has not yet been defined; have you installed perl?";
-    }
-    else {
-        return $self->{commit_dir};
-    }
-}
+#sub get_commit_dir {
+#    my $self = shift;
+#    if (! defined $self->{commit_dir}) {
+#        croak "commit directory has not yet been defined; have you installed perl?";
+#    }
+#    else {
+#        return $self->{commit_dir};
+#    }
+#}
 
 sub get_bin_dir {
     my $self = shift;

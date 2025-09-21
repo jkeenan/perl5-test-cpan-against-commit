@@ -5,7 +5,8 @@ use warnings;
 
 use Test::More;
 use Carp;
-use File::Path ( qw| make_path | );
+use Cwd;
+use File::Path ( qw| make_path remove_tree | );
 use File::Spec;
 use File::Temp ( qw| tempdir |);
 use Data::Dump ( qw| dd pp | );
@@ -13,7 +14,17 @@ use Data::Dump ( qw| dd pp | );
 BEGIN { use_ok( 'Test::Against::Commit' ); }
 
 #my $tdir = tempdir(CLEANUP => 1);
-my $tdir = tempdir();
+#my $toptdir = tempdir();
+my $cwd = cwd();
+my $time = time();
+my $tdir = File::Spec->catdir($cwd, $time);
+if (-d $tdir) {
+    my $removed_count = remove_tree($tdir,
+        { verbose => 1, error  => \my $err_list, safe => 1, });
+}
+make_path($tdir, { mode => 0755 })
+    or croak "Unable to create $tdir for testing";
+
 my $self;
 
 # Error conditions for new() which can be tested by non-author users
@@ -79,7 +90,7 @@ my $self;
     my @dirs_needed = ( $project_dir, $commit_dir, $testing_dir, $results_dir );
     for my $dir ( @dirs_needed ) {
         unless (-d $dir) {
-            make_path($project_dir, { mode => 0755 })
+            make_path($dir, { mode => 0755 })
                 or croak "Unable to create $dir for testing";
         }
     }
@@ -99,13 +110,18 @@ my $self;
 #        my $fdir = File::Spec->catdir($top_dir, $dir);
 #        ok(-d $fdir, "Located $fdir");
 #    }
-#    my $testing_dir = $self->get_testing_dir;
-#    my $results_dir = $self->get_results_dir;
-#    ok(-d $testing_dir, "Got testing directory: $testing_dir");
-#    ok(-d $results_dir, "Got results directory: $results_dir");
-#
-#    is($self->get_commit(), $commit, "Got expected commit");
-#
+
+    $project_dir = $self->get_project_dir;
+    $commit_dir = $self->get_commit_dir;
+    $testing_dir = $self->get_testing_dir;
+    $results_dir = $self->get_results_dir;
+    ok(-d $project_dir, "Got project directory: $project_dir");
+    ok(-d $commit_dir, "Got commit directory: $commit_dir");
+    ok(-d $testing_dir, "Got testing directory: $testing_dir");
+    ok(-d $results_dir, "Got results directory: $results_dir");
+
+    is($self->get_commit(), $commit, "Got expected commit");
+
 #    {
 #        local $@;
 #        eval { $self->get_commit_dir(); };
@@ -150,3 +166,10 @@ my $self;
 }
 
 done_testing();
+chdir $cwd;
+
+END {
+    my $removed_count = remove_tree($tdir,
+        { verbose => '', error  => \my $err_list, safe => 1, }
+    );
+}
