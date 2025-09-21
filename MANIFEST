@@ -8,4 +8,6 @@ README
 shell/install_perl_only_custom_location
 shell/install_perl_only_from_tarball_custom_location
 t/001-new.t
+t/data/Phony-FAIL-0.01.tar.gz
+t/data/Phony-PASS-0.01.tar.gz
 Todo
