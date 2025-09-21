@@ -442,7 +442,7 @@ sub new {
     croak "Could not locate application directory $args->{application_dir}"
         unless (-d $args->{application_dir});
     croak "Must supply name for project"
-        unless ($args->{project} and length($args->{project}));
+        unless length($args->{project});
 
     my %verified = ();
     my $project_dir = File::Spec->catdir($args->{application_dir}, $args->{project});
