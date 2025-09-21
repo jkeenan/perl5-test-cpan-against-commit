@@ -6,7 +6,6 @@ our $VERSION = '0.15';
 use Archive::Tar;
 use Carp;
 use Cwd;
-use File::Fetch;
 use File::Path ( qw| make_path | );
 use File::Spec;
 use File::Temp ( qw| tempfile | );
