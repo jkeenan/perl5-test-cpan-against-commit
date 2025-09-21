@@ -386,7 +386,8 @@ directories thereunder:  F<testing/> and F<results/>.
 
     my $self = Test::Against::Commit->new( {
         application_dir => '/path/to/application',
-        commit => 'blead',
+        project => 'goto-fatal'
+        commit => '23ae7f95ea',
     } );
 
 Takes a hash reference with the following elements:
@@ -395,12 +396,17 @@ Takes a hash reference with the following elements:
 
 =item * C<application_dir>
 
-String holding path to the directory which will serve as the top level for your application.
+String holding path to the directory which will serve as the top level for all
+projects using Test-Against-Commit technology.
+
+=item * C<project>
+
+String holding a short name for your current business project.
 
 =item * C<commit>
 
-String holding a name for the specific F<perl> executable against which you
-will be attempting to install CPAN modules.  If you are building F<perl> from
+String holding a name for the specific I<installation> of F<perl> against which you
+will be attempting to install CPAN modules.  If you have built F<perl> from
 a F<git> checkout, this should be the F<git> commit ID (SHA), F<git> tag or
 F<git> branch name from which you are starting.  If you are building F<perl>
 from a release tarball, consider using a string such as C<perl-5.42.0> from
@@ -435,11 +441,20 @@ sub new {
         unless $args->{commit};
     croak "Could not locate application directory $args->{application_dir}"
         unless (-d $args->{application_dir});
+    croak "Must supply name for project"
+        unless ($args->{project} and length($args->{project}));
 
     my %verified = ();
+    my $project_dir = File::Spec->catdir($args->{application_dir}, $args->{project});
+    unless (-d $project_dir) { make_path($project_dir, { mode => 0755 }); }
+    $verified{project_dir} = $project_dir;
+    my $install_dir = File::Spec->catdir($project_dir, $args->{commit});
+    unless (-d $install_dir) { make_path($install_dir, { mode => 0755 }); }
+    $verified{install_dir} = $install_dir;
+
     for my $dir (qw| testing results |) {
-        my $fdir = File::Spec->catdir($args->{application_dir}, $dir);
-        croak "Could not locate $dir directory $fdir" unless (-d $fdir);
+        my $fdir = File::Spec->catdir($install_dir, $dir);
+        unless (-d $fdir) { make_path($fdir, { mode => 0755 }); }
         my $k = $dir . '_dir';
         $verified{$k} = $fdir;
     }
