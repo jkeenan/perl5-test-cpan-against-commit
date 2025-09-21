@@ -25,6 +25,7 @@ Test::Against::Commit - Test CPAN modules against Perl dev releases
 
     my $self = Test::Against::Commit->new( {
         application_dir => '/path/to/application',
+        project         => 'business_project',
         commit          => <commit_ID_tag_or_branch>,
     } );
 
@@ -48,8 +49,9 @@ L<Test-Against-Dev|https://metacpan.org/dist/Test-Against-Dev>.
 
 =head2 The Problem Addressed by This Library
 
-In the development of Perl as a language we face a problem typically referred to as B<Blead Breaks CPAN> (or B<BBC> for
-short).  Perl 5 undergoes an annual development cycle characterized by:
+In the development of Perl as a language we face a problem typically referred
+to as B<Blead Breaks CPAN> (or B<BBC> for short).  Perl 5 undergoes an annual
+development cycle characterized by:
 
 =over 4
 
@@ -82,7 +84,6 @@ referred to as "core developers" or as the "Perl 5 Porters."
 
 This library is intended as a contribution to those efforts by enabling the
 Perl 5 Porters to assess the impact of changes in the Perl 5 core distribution
-on important provide a monthly snapshot of the impact of core development on
 CPAN libraries well in advance of production and maintenance releases.
 
 =head2 The Approach Test-Against-Commit Takes
@@ -114,48 +115,123 @@ on CPAN, it could in principle be extended to test an organization's private
 libraries as well.  This functionality, however, has not yet been implemented
 or tested.
 
-=head2 What Is the Result Produced by This Library?
+=head2 Terminology
 
-We will use the term I<run> to describe an instance of (i) testing one or more
-CPAN libraries against a given installed F<perl> and (ii) the recording of
-data from that instance of testing.  Our objective is to be able to compare
-the results of different runs against different F<perl> executables.
-
-For example, suppose a person working on the Perl core distribution wants to
-assess the impact of certain changes being proposed in a pull request on set
-of fifty specific CPAN libraries.  The user will first create a benchmark
-F<perl> probably built from a monthly development release, the GH tag
-associated with that release, or the GH commit from which the pull request was
-generated.  She will use this library to conduct a run against that
-executable.  In the run, each CPAN library will be graded C<PASS>, C<FAIL> (or
-C<NA> for "not applicable").
-
-At a certain point in the course of the pull request's development, the user
-will build a new F<perl> executable and conduct a run against that F<perl>.
-If a particular CPAN library receives a grade of C<PASS> during the first run
-and a grade of C<FAIL> during the next, the Perl 5 Porters will be asked to
-determine the cause of that breakage.
+Here are some terms which we use in a specific way in this library:
 
 =over 4
 
-=item *
+=item * B<application directory>
 
-Sometimes the change in Perl 5 is wrong and needs to be reverted.
+A directory to which the user has write-privileges and which holds the input
+and output for one or more I<projects>.  I<Example:> C</path-to-application>.
 
-=item *
+=item * B<project>
 
-Sometimes the change in Perl 5 is correct (or, at least, plausible) but
-exposes sub-optimal code in the CPAN module.
+A short-hand description of the focus of a particular investigation using
+Test-Against-Commit.  I<Example:> C<goto> could describe an investigation of
+the impact of fatalization of certain uses of the Perl C<goto> function on
+CPAN libraries.
 
-=item *
+=item * B<project directory>
 
-Sometimes the failure is due to external conditions, such as a change in a C
-library on the testing platform.
+A subdirectory of the I<application directory> which holds the input and
+output data for one I<project>.  I<Example:> C</path-to-application/goto>.
+
+=item * B<installation>
+
+An installation of one F<perl> executable, the libraries that get installed
+with the core distribution, CPAN libraries whose installability we tested
+against that F<perl> and data gathered to analyze that installability and
+answer questions for the business purpose of the I<project>.
+
+An installation will be built either from a particular checkout, tag or branch
+from a F<git> repository of the Perl 5 source code (C<23ae7f95ea>, C<v5.43.3>,
+C<blead>) or from a Perl 5 development, production or maintenance release in
+tarball form (C<perl-5.44.0>).
+
+A I<project> will consist of at least one installation but will probably hold
+two or three installations: the first will be used to determine a baseline
+state, the second will be used to assess the impact of a proposed change in
+the Perl 5 core distribution on installability of CPAN libraries.
+
+=item * B<installation directory>
+
+A subdirectory of the I<project directory> holding one installation.  I<Example:>
+
+    /path-to-application/                   # <-- application directory
+    /path-to-application/goto/              # <-- project directory
+    /path-to-application/goto/23ae7f95ea/   # <-- installation directory
+    /path-to-application/goto/v5.43.3/      # <-- another installation directory
+
+Each installation directory will have exactly two subdirectories: C<testing>
+and C<results>. (See next two items.)
+
+=item * B<testing directory>
+
+A subdirectory of an I<installation directory> which in turn initially holds
+two subdirectories, C<bin/> and C<lib/>.
+
+The C<bin/> directory holds the F<perl>, F<perldoc>, F<cpan> and other
+executable when a particular F<perl> is built for the project.  The C<lib/>
+directory holds all modules installed either initially with the executable or
+subsequently, including those whose functionality we are assessing as part of
+the project's business purpose.  Test-Against-Commit methods will create other
+subdirectories next to C<bin/> and C<lib/>, some of which are hidden, as part
+of the testing progress.
+
+    /path-to-application/goto/23ae7f95ea/           # <-- installation directory
+    /path-to-application/goto/23ae7f95ea/testing/   # <-- testing directory
+    /path-to-application/goto/23ae7f95ea/bin/       # <-- bin directory
+    /path-to-application/goto/23ae7f95ea/lib/       # <-- lib directory
+
+The data in the I<testing directory> can be thought of as the project's
+I<input> data.
+
+=item * B<results directory>
+
+A subdirectory of an I<installation directory> which holds the data created by
+running a program using Test::Against::Commit methods.  This directory will in turn
+hold three subdirectories: C<buildlogs/>, C<analysis/> and C<storage/>.
+
+    /path-to-application/goto/23ae7f95ea/           # <-- installation directory
+    /path-to-application/goto/23ae7f95ea/testing/   # <-- testing directory
+    ...
+    /path-to-application/goto/23ae7f95ea/results/   # <-- results directory
+    /path-to-application/goto/23ae7f95ea/results/buildlogs/
+    /path-to-application/goto/23ae7f95ea/results/analysis/
+    /path-to-application/goto/23ae7f95ea/results/storage/
+
+The data in the I<results directory> can be thought of as the project's
+I<output> data.
+
+=item * B<run>
+
+A I<run> is an instance of (i) testing a set of one or more CPAN libraries
+against a given I<installation> and (ii) the recording of data from that
+instance of testing.
 
 =back
 
-There's no way to write code to figure out which situation -- or mix of
-situations -- we are in.  The human user must intervene at this point.
+=head2 What Is the Result Produced by This Library?
+
+Our objective is to be able to compare output data recorded in one I<run> for
+a given I<project> with data recorded in a different I<run> for a different
+(presumably subsequent) installation within the same I<project>.  To return to
+the example of the I<goto> project, let's assume we have two different
+installations, the first of which sets our baseline (which CPAN libraries
+currently C<PASS> and which currently C<FAIL>) and a second which determines
+the impact of applying a pull request.
+
+    /path-to-application/goto/              # <-- project directory
+    /path-to-application/goto/23ae7f95ea/   # <-- first installation directory
+    /path-to-application/goto/v5.43.3/      # <-- second installation directory
+
+We will end up comparing data stored in these installations' respective
+C<results/analysis/> subdirectories.
+
+    /path-to-application/goto/23ae7f95ea/results/analysis/
+    /path-to-application/goto/v5.43.3/results/analysis/
 
 =head2 What Preparations Are Needed to Use This Library?
 
