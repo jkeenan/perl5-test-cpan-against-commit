@@ -732,9 +732,6 @@ sub fetch_cpanm {
     croak "fetch_cpanm: Must supply hash ref as argument"
         unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
     my $verbose = delete $args->{verbose} || '';
-    my $uri = (exists $args->{uri} and length $args->{uri})
-        ? $args->{uri}
-        : 'https://fastapi.metacpan.org/source/MIYAGAWA/App-cpanminus-1.7048/bin/cpanm';
 
     my $cpanm_dir = File::Spec->catdir($self->get_commit_dir(), '.cpanm');
     unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
@@ -742,19 +739,12 @@ sub fetch_cpanm {
     $self->{cpanm_dir} = $cpanm_dir;
 
     my $bin_dir = $self->get_bin_dir();
+    my $this_cpan = File::Spec->catfile($bin_dir, 'cpan');
+    system(qq| $this_cpan -v 1>/dev/null |) and croak "Unable call 'cpan -v'";
+    system(qq| $this_cpan App::cpanminus 1>/dev/null |)
+        and croak "Unable to use cpan to install App::cpanminus";
     my $this_cpanm = File::Spec->catfile($bin_dir, 'cpanm');
-    # If cpanm is already installed in bin_dir, we don't need to try to
-    # reinstall it.
-    if (-f $this_cpanm) {
-        say "'$this_cpanm' already installed" if $verbose;
-    }
-    else {
-       say "Fetching 'cpanm' from $uri" if $verbose;
-       my $ff = File::Fetch->new(uri => $uri)->fetch(to => $bin_dir)
-           or croak "Unable to fetch 'cpanm' from $uri";
-    }
-    my $cnt = chmod 0755, $this_cpanm;
-    croak "Unable to make '$this_cpanm' executable" unless $cnt;
+    system(qq| $this_cpanm -V 1>/dev/null |) and croak "Unable call 'cpanm -V'";
     $self->{this_cpanm} = $this_cpanm;
 
     return $self;
