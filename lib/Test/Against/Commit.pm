@@ -129,14 +129,14 @@ and output for one or more I<projects>.  I<Example:> C</path-to-application>.
 =item * B<project>
 
 A short-hand description of the focus of a particular investigation using
-Test-Against-Commit.  I<Example:> C<goto> could describe an investigation of
+Test-Against-Commit.  I<Example:> C<goto-fatal> could describe an investigation of
 the impact of fatalization of certain uses of the Perl C<goto> function on
 CPAN libraries.
 
 =item * B<project directory>
 
 A subdirectory of the I<application directory> which holds the input and
-output data for one I<project>.  I<Example:> C</path-to-application/goto>.
+output data for one I<project>.  I<Example:> C</path-to-application/goto-fatal>.
 
 =item * B<installation>
 
@@ -160,9 +160,9 @@ the Perl 5 core distribution on installability of CPAN libraries.
 A subdirectory of the I<project directory> holding one installation.  I<Example:>
 
     /path-to-application/                   # <-- application directory
-    /path-to-application/goto/              # <-- project directory
-    /path-to-application/goto/23ae7f95ea/   # <-- installation directory
-    /path-to-application/goto/v5.43.3/      # <-- another installation directory
+    /path-to-application/goto-fatal/              # <-- project directory
+    /path-to-application/goto-fatal/23ae7f95ea/   # <-- installation directory
+    /path-to-application/goto-fatal/v5.43.3/      # <-- another installation directory
 
 Each installation directory will have exactly two subdirectories: C<testing>
 and C<results>. (See next two items.)
@@ -180,10 +180,10 @@ the project's business purpose.  Test-Against-Commit methods will create other
 subdirectories next to C<bin/> and C<lib/>, some of which are hidden, as part
 of the testing progress.
 
-    /path-to-application/goto/23ae7f95ea/           # <-- installation directory
-    /path-to-application/goto/23ae7f95ea/testing/   # <-- testing directory
-    /path-to-application/goto/23ae7f95ea/bin/       # <-- bin directory
-    /path-to-application/goto/23ae7f95ea/lib/       # <-- lib directory
+    /path-to-application/goto-fatal/23ae7f95ea/               # <-- installation directory
+    /path-to-application/goto-fatal/23ae7f95ea/testing/       # <-- testing directory
+    /path-to-application/goto-fatal/23ae7f95ea/testing/bin/   # <-- bin directory
+    /path-to-application/goto-fatal/23ae7f95ea/testing/lib/   # <-- lib directory
 
 The data in the I<testing directory> can be thought of as the project's
 I<input> data.
@@ -194,13 +194,13 @@ A subdirectory of an I<installation directory> which holds the data created by
 running a program using Test::Against::Commit methods.  This directory will in turn
 hold three subdirectories: C<buildlogs/>, C<analysis/> and C<storage/>.
 
-    /path-to-application/goto/23ae7f95ea/           # <-- installation directory
-    /path-to-application/goto/23ae7f95ea/testing/   # <-- testing directory
+    /path-to-application/goto-fatal/23ae7f95ea/           # <-- installation directory
+    /path-to-application/goto-fatal/23ae7f95ea/testing/   # <-- testing directory
     ...
-    /path-to-application/goto/23ae7f95ea/results/   # <-- results directory
-    /path-to-application/goto/23ae7f95ea/results/buildlogs/
-    /path-to-application/goto/23ae7f95ea/results/analysis/
-    /path-to-application/goto/23ae7f95ea/results/storage/
+    /path-to-application/goto-fatal/23ae7f95ea/results/   # <-- results directory
+    /path-to-application/goto-fatal/23ae7f95ea/results/buildlogs/
+    /path-to-application/goto-fatal/23ae7f95ea/results/analysis/
+    /path-to-application/goto-fatal/23ae7f95ea/results/storage/
 
 The data in the I<results directory> can be thought of as the project's
 I<output> data.
@@ -211,6 +211,26 @@ A I<run> is an instance of (i) testing a set of one or more CPAN libraries
 against a given I<installation> and (ii) the recording of data from that
 instance of testing.
 
+=item * B<Perl 5 configuration>
+
+The way one calls F<Configure> when building Perl 5 from source, <e.g.>:
+
+    sh ./Configure -des -Dusedevel
+
+or:
+
+    sh ./Configure -des -Dusedevel \
+        -Duseithreads \
+        -Doptimize="-O2 -pipe -fstack-protector -fno-strict-aliasing"
+
+Once you begin to use Test-Against-Commit for a particular I<project>, you
+should use the same configuration for each I<installation> over the life of
+that project.  For instance, you should not configure without threads in one
+run but with threads in the next.  Nor should you switch from regular to
+debugging builds between I<runs>.  Otherwise, the results may reflect changes
+in that configuration rather than changes in Perl 5 core distribution code or
+changes in the targeted CPAN libraries.
+
 =back
 
 =head2 What Is the Result Produced by This Library?
@@ -218,20 +238,20 @@ instance of testing.
 Our objective is to be able to compare output data recorded in one I<run> for
 a given I<project> with data recorded in a different I<run> for a different
 (presumably subsequent) installation within the same I<project>.  To return to
-the example of the I<goto> project, let's assume we have two different
+the example of the I<goto-fatal> project, let's assume we have two different
 installations, the first of which sets our baseline (which CPAN libraries
 currently C<PASS> and which currently C<FAIL>) and a second which determines
 the impact of applying a pull request.
 
-    /path-to-application/goto/              # <-- project directory
-    /path-to-application/goto/23ae7f95ea/   # <-- first installation directory
-    /path-to-application/goto/v5.43.3/      # <-- second installation directory
+    /path-to-application/goto-fatal/              # <-- project directory
+    /path-to-application/goto-fatal/23ae7f95ea/   # <-- first installation directory
+    /path-to-application/goto-fatal/v5.43.3/      # <-- second installation directory
 
 We will end up comparing data stored in these installations' respective
 C<results/analysis/> subdirectories.
 
-    /path-to-application/goto/23ae7f95ea/results/analysis/
-    /path-to-application/goto/v5.43.3/results/analysis/
+    /path-to-application/goto-fatal/23ae7f95ea/results/analysis/
+    /path-to-application/goto-fatal/v5.43.3/results/analysis/
 
 =head2 What Preparations Are Needed to Use This Library?
 
@@ -248,25 +268,9 @@ system.
 
 =item * Perl 5 Configuration
 
-The user must decide on a Perl 5 configuration before using
-F<Test-Against-Commit> on a regular basis and then must refrain from changing
-that configuration over the course of the testing period.  Otherwise, the
-results may reflect changes in that configuration rather than changes in Perl
-5 core distribution code or changes in the targeted CPAN libraries.
-
-By "Perl 5 configuration" we mean the way one calls F<Configure> when building
-Perl 5 from source, <e.g.>:
-
-    sh ./Configure -des -Dusedevel
-
-or:
-
-    sh ./Configure -des -Dusedevel \
-        -Duseithreads \
-        -Doptimize="-O2 -pipe -fstack-protector -fno-strict-aliasing"
-
-For instance, you should not configure without threads in one run but with threads
-in the next.  Nor should you switch from regular to debugging builds between threads.
+The user must decide on a Perl 5 configuration for a given I<project> and then
+must refrain from changing configurations over the course of the project's
+existence.  See item under L<Terminology> above.
 
 =item * F<perl> Executable Installation Location
 
@@ -274,63 +278,44 @@ As noted above, this library leaves to the user the choice of a I<way to get
 the Perl source code> and the decision of I<how to configure> an individual
 F<perl> executable.  It also leaves to the user, with one caveat, the decision
 of I<where> to install that executable on disk.  That caveat is that the
-F<perl> installation should reside in a directory named F<testing> which in
-turn sits underneath a directory which we'll refer to as the I<application
+I<installation> should reside in a directory named F<testing> which in turn
+sits underneath a directory which we'll refer to as the I<application
 directory>.  The user will have to manually create the I<application
-directory> as well as the F<testing> directory underneath.
+directory>, the I<project directory>, the I<installation directory> and the
+I<testing directory> and then use the I<testing directory> as the value for
+the I<-Dprefix> option in the invocation of F<Configure>.
 
-Example:  Suppose you want all your Test-Against-Commit data to sit in the directory tree F</path/to/application>:
+In terms of the directory structure discussed above, that the user would
+create a directory structure something like this:
 
-    /path/to/application
+    $ cd ~/tmp
+    $ export TESTINGDIR=`pwd`/all-tad-projects/goto-fatal/23ae7f95ea/testing
+    $ echo $TESTINGDIR
+    .../tmp/all-tad-projects/goto-fatal/23ae7f95ea/testing
+    $ mkdir -p $TESTINGDIR
+    $ ls -l $TESTINGDIR
+    total 0
 
-You will need a subdirectory called F<testing> underneath that:
+    $ cd <git checkout of perl branch or decompressed release tarball>
 
-    /path/to/application
-    /path/to/application/testing
+The user would then invoke F<Configure> in a way something like this:
 
-You can create these directories with this command:
-
-    $ mkdir -p /path/to/application/testing
-
-Now suppose that for one project you want to use as your baseline a F<perl>
-built from a F<git> checkout at commit C<03f24b8a08>, and for a I<different>
-project you want to use as your baseline a F<perl> built from a maintenance
-release tarball of C<perl-5.40.2>.  That means you will I<ultimately> want a
-directory structure like this:
-
-    /path/to/application/
-    /path/to/application/testing/
-    /path/to/application/testing/03f24b8a08/
-    /path/to/application/testing/perl-5.40.2/
-
-Using the second of the C<Configure> examples above, for the first project you would configure with:
-
-    $ sh ./Configure -des -Dusedevel \
-        -Duseithreads \
-        -Doptimize="-O2 -pipe -fstack-protector -fno-strict-aliasing"
-        -Dprefix=/path/to/application/testing/03f24b8a08
-
-For the second project you would configure with:
-
-    $ sh ./Configure -des -Dusedevel \
-        -Duseithreads \
-        -Doptimize="-O2 -pipe -fstack-protector -fno-strict-aliasing"
-        -Dprefix=/path/to/application/testing/perl-5.40.2
-
-After running C<sh ./Configure>, you would then call in each project:
-
+    $ sh ./Configure -des -Dusedevel -Dprefix=$TESTINGDIR \
+        -Uversiononly -Dman1dir=none -Dman3dir=none
     $ make install
 
-You would end up with a directory structure the top of which would look like this:
+The user could then confirm installation with this:
 
-    /path/to/application/
-    /path/to/application/testing/
-    /path/to/application/testing/03f24b8a08/
-    /path/to/application/testing/03f24b8a08/bin
-    /path/to/application/testing/03f24b8a08/lib
-    /path/to/application/testing/perl-5.40.2/
-    /path/to/application/testing/perl-5.40.2/bin
-    /path/to/application/testing/perl-5.40.2/lib
+    $ $TESTINGDIR/bin/perl -v | head -2 | tail -1
+    This is perl 5, version 43, subversion 3 (v5.43.3 (v5.43.2-343-g5fdb3e501b)) built for x86_64-linux
+
+Note that at this point we have not yet created the I<results directory> ...
+
+    $ cd ~/tmp
+    $ ls -l ./all-tad-projects/goto-fatal/23ae7f95ea/results
+    ... No such file or directory
+
+... but no worries; Test-Against-commit methods will handle that.
 
 =item * Selection of CPAN Libraries for Testing
 
