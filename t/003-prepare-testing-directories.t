@@ -18,6 +18,7 @@ BEGIN {
 }
 
 use Carp;
+use Cwd;
 use Capture::Tiny ( qw | capture_stdout | );
 #use Data::Dump ( qw| dd pp | );
 
@@ -33,6 +34,8 @@ note("Presuming installed perl, testing new()");
 # Call:
 # PERL_AUTHOR_TESTING_INSTALLED_PERL=<path> \
 #   prove -vb t/003-prepare-testing-directories.t
+
+my $cwd = cwd;
 
 my $stdout = capture_stdout {
     system(qq{ $installed_perl -v | head -2 | tail -1 })
@@ -165,5 +168,213 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
         ok(-d $rv, "Located $dir directory at $rv");
     }
 }
+
+
+{
+    note("run_cpanm(): error conditions");
+
+    {
+        local $@;
+        eval { $self->run_cpanm( [ module_file => 'foo', title => 'not-cpan-river' ] ); };
+        like($@, qr/run_cpanm: Must supply hash ref as argument/,
+            "Got expected error message: absence of hashref");
+    }
+
+    {
+        local $@;
+        my $bad_element = 'foo';
+        eval { $self->run_cpanm( { $bad_element => 'bar', title => 'not-cpan-river' } ); };
+        like($@, qr/run_cpanm: '$bad_element' is not a valid element/,
+            "Got expected error message: bad argument");
+    }
+#
+    {
+        local $@;
+        eval { $self->run_cpanm( {
+            module_file => 'foo',
+            module_list => [ 'Foo::Bar', 'Alpha::Beta' ],
+            title => 'not-cpan-river',
+        } ); };
+        like($@, qr/run_cpanm: Supply either a file for 'module_file' or an array ref for 'module_list' but not both/,
+            "Got expected error message: bad mixture of arguments");
+    }
+
+    {
+        local $@;
+        my $bad_module_file = 'foo';
+        eval { $self->run_cpanm( { module_file => $bad_module_file, title => 'not-cpan-river' } ); };
+        like($@, qr/run_cpanm: Could not locate '$bad_module_file'/,
+            "Got expected error message: module_file not found");
+    }
+
+    {
+        local $@;
+        eval { $self->run_cpanm( { module_list => "Foo::Bar", title => 'not-cpan-river' } ); };
+        like($@, qr/run_cpanm: Must supply array ref for 'module_list'/,
+            "Got expected error message: value for module_list not an array ref");
+    }
+
+    {
+        local $@;
+        my $list = [
+            map { File::Spec->catfile($cwd, 't', 'data', $_) }
+            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
+        ];
+        eval {
+            $self->run_cpanm( {
+                module_list => $list,
+                title => undef,
+            } );
+        };
+        like($@, qr/Must supply value for 'title' element/,
+            "Got expected error message: value for title is not defined");
+    }
+
+    {
+        local $@;
+        my $list = [
+            map { File::Spec->catfile($cwd, 't', 'data', $_) }
+            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
+        ];
+        eval {
+            $self->run_cpanm( {
+                module_list => $list,
+                title => '',
+            } );
+        };
+        like($@, qr/Must supply value for 'title' element/,
+            "Got expected error message: value for title is empty string");
+    }
+}
+
+
+#
+#    {
+#        note("run_cpanm(): Testing via 'module_list'");
+#        local $@;
+#        my $list = [
+#            map { File::Spec->catfile($cwd, 't', 'data', $_) }
+#            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
+#        ];
+#
+#        # TODO: Add tests which capture verbose output and match it against
+#        # expectations.
+#
+#        my $gzipped_build_log;
+#        my $stdout = capture_stdout {
+#            $gzipped_build_log = $self->run_cpanm( {
+#                module_list => $list,
+#                title       => 'one-pass-one-fail',
+#                verbose     => 1,
+#            } );
+#        };
+#        unless ($@) {
+#            pass("run_cpanm operated as intended; see $gzipped_build_log for PASS/FAIL/etc.");
+#        }
+#        else {
+#            fail("run_cpanm did not operate as intended: $@");
+#        }
+#        ok(-f $gzipped_build_log, "Located $gzipped_build_log");
+#        like($stdout,
+#            qr/cpanm_dir:.*?\.cpanm/s,
+#            "run_cpanm(): Got expected verbose output: cpanm_dir"
+#        );
+#        like($stdout,
+#            qr/See gzipped build.log in $gzipped_build_log/s,
+#            "run_cpanm(): Got expected verbose output: build.log"
+#        );
+#    }
+#
+#    {
+#        note("run_cpanm(): Testing via 'module_file'");
+#        local $@;
+#        my $list = [
+#            map { File::Spec->catfile($cwd, 't', 'data', $_) }
+#            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
+#        ];
+#        my ($IN, $file) = tempfile('005_files_for_cpanm_XXXXX', UNLINK => 1);
+#        open $IN, '>', $file or croak "Could not open $file for writing";
+#        say $IN $_ for @{$list};
+#        close $IN or croak "Could not close $file after writing";
+#        ok(-f $file, "Located $file for testing");
+#        my $gzipped_build_log = $self->run_cpanm( {
+#            module_file => $file,
+#            title       => 'second-one-pass-one-fail',
+#        } );
+#        unless ($@) {
+#            pass("run_cpanm operated as intended; see $gzipped_build_log for PASS/FAIL/etc.");
+#        }
+#        else {
+#            fail("run_cpanm did not operate as intended");
+#        }
+#        ok(-f $gzipped_build_log, "Located $gzipped_build_log");
+#    }
+#
+#    note("analyze_cpanm_build_logs()");
+#
+#    my $ranalysis_dir;
+#    {
+#        local $@;
+#        eval { $self = Test::Against::Build->analyze_cpanm_build_logs([]); };
+#        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
+#            "analyze_cpanm_build_logs: Got expected error message for non-hashref argument");
+#    }
+#
+#    {
+#        local $@;
+#        eval { $self = Test::Against::Build->analyze_cpanm_build_logs(); };
+#        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
+#            "analyze_cpanm_build_logs: Got expected error message for no argument");
+#    }
+#
+#    {
+#        local $@;
+#        eval { $ranalysis_dir = $self->analyze_cpanm_build_logs( [ verbose => 1 ] ); };
+#        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
+#            "analyze_cpanm_build_logs(): Got expected error message for lack of hash ref");
+#    }
+#
+#    my $stdout = capture_stdout {
+#        $ranalysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
+#    };
+#    ok(-d $ranalysis_dir,
+#        "analyze_cpanm_build_logs() returned path to version-specific analysis directory '$ranalysis_dir'");
+#    like($stdout,
+#        qr/See results in $ranalysis_dir/s,
+#        "analyze_cpanm_build_logs(): Got expected verbose output: cpanm_dir"
+#    );
+#
+#    note("analyze_json_logs()");
+#
+#    my $rv;
+#    {
+#        local $@;
+#        eval { $rv = $self->analyze_json_logs(); };
+#        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
+#            "analyze_json_logs(): Got expected error message: no defined argument");
+#    }
+#
+#    {
+#        local $@;
+#        eval { $rv = $self->analyze_json_logs( verbose => 1 ); };
+#        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
+#            "analyze_json_logs(): Got expected error message: absence of hash ref");
+#    }
+#
+#    {
+#        local $@;
+#        eval { $rv = $self->analyze_json_logs( { verbose => 1, sep_char => "\t" } ); };
+#        like($@, qr/analyze_json_logs: Currently only pipe \('\|'\) and comma \(','\) are supported as delimiter characters/,
+#            "analyze_json_logs(): Got expected error message: unsupported delimiter");
+#    }
+#
+#    my $fpsvfile = $self->analyze_json_logs( { verbose => 1 } );
+#    ok($fpsvfile, "analyze_json_logs() returned true value");
+#    ok(-f $fpsvfile, "Located '$fpsvfile'");
+#
+#    my $fcsvfile = $self->analyze_json_logs( { verbose => 1 , sep_char => ',' } );
+#    ok($fcsvfile, "analyze_json_logs() returned true value");
+#    ok(-f $fcsvfile, "Located '$fcsvfile'");
+#}
 
 done_testing();
