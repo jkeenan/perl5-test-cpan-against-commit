@@ -974,14 +974,6 @@ I<results_dir> directory discussed above.  These are illustrated as follows:
 
 =cut
 
-# /application_dir/project_dir/install_dir/testing
-# /application_dir/project_dir/install_dir/testing/bin
-# /application_dir/project_dir/install_dir/testing/lib
-# /application_dir/project_dir/install_dir/results
-# /application_dir/project_dir/install_dir/results/buildlogs
-# /application_dir/project_dir/install_dir/results/analysis
-# /application_dir/project_dir/install_dir/results/storage
-
 sub run_cpanm {
     my ($self, $args) = @_;
     croak "run_cpanm: Must supply hash ref as argument"
@@ -1011,9 +1003,6 @@ sub run_cpanm {
     }
     $self->{title} = $args->{title};
 
-    # Need to rethink results directory setup, because we are now no longer
-    # limited to testing perl releases (which have unambiguous perl_versions
-    # associated with them).
     unless (-d $self->{install_dir}) {
         $self->setup_results_directories();
     }
