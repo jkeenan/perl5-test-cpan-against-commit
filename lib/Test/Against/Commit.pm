@@ -1018,7 +1018,7 @@ sub run_cpanm {
         $self->setup_results_directories();
     }
 
-    my $cpanreporter_dir = File::Spec->catdir($self->get_install_dir(), '.cpanreporter');
+    my $cpanreporter_dir = File::Spec->catdir($self->get_testing_dir(), '.cpanreporter');
     unless (-d $cpanreporter_dir) { make_path($cpanreporter_dir, { mode => 0755 }); }
     croak "Could not locate $cpanreporter_dir" unless (-d $cpanreporter_dir);
     $self->{cpanreporter_dir} = $cpanreporter_dir;
