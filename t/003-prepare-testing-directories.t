@@ -310,40 +310,40 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
         ok(-f $gzipped_build_log, "Located $gzipped_build_log");
     }
 
-#    note("analyze_cpanm_build_logs()");
-#
-#    my $ranalysis_dir;
-#    {
-#        local $@;
-#        eval { $self->analyze_cpanm_build_logs([]); };
-#        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
-#            "analyze_cpanm_build_logs: Got expected error message for non-hashref argument");
-#    }
-#
-#    {
-#        local $@;
-#        eval { $self->analyze_cpanm_build_logs(); };
-#        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
-#            "analyze_cpanm_build_logs: Got expected error message for no argument");
-#    }
-#
-#    {
-#        local $@;
-#        eval { $ranalysis_dir = $self->analyze_cpanm_build_logs( [ verbose => 1 ] ); };
-#        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
-#            "analyze_cpanm_build_logs(): Got expected error message for lack of hash ref");
-#    }
-#
-#    $stdout = capture_stdout {
-#        $ranalysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
-#    };
-#    ok(-d $ranalysis_dir,
-#        "analyze_cpanm_build_logs() returned path to version-specific analysis directory '$ranalysis_dir'");
-#    like($stdout,
-#        qr/See results in $ranalysis_dir/s,
-#        "analyze_cpanm_build_logs(): Got expected verbose output: cpanm_dir"
-#    );
-#
+    note("analyze_cpanm_build_logs()");
+
+    my $ranalysis_dir;
+    {
+        local $@;
+        eval { $self->analyze_cpanm_build_logs([]); };
+        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
+            "analyze_cpanm_build_logs: Got expected error message for non-hashref argument");
+    }
+
+    {
+        local $@;
+        eval { $self->analyze_cpanm_build_logs(); };
+        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
+            "analyze_cpanm_build_logs: Got expected error message for no argument");
+    }
+
+    {
+        local $@;
+        eval { $ranalysis_dir = $self->analyze_cpanm_build_logs( [ verbose => 1 ] ); };
+        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
+            "analyze_cpanm_build_logs(): Got expected error message for lack of hash ref");
+    }
+
+    $stdout = capture_stdout {
+        $ranalysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
+    };
+    ok(-d $ranalysis_dir,
+        "analyze_cpanm_build_logs() returned path to version-specific analysis directory '$ranalysis_dir'");
+    like($stdout,
+        qr/See results in $ranalysis_dir/s,
+        "analyze_cpanm_build_logs(): Got expected verbose output: cpanm_dir"
+    );
+
 #    note("analyze_json_logs()");
 #
 #    my $rv;

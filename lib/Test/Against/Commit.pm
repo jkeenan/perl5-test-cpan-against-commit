@@ -1196,65 +1196,65 @@ sub gzip_cpanm_build_log {
     $self->{gzlog} = $gzlog;
 }
 
-#=head2 C<analyze_cpanm_build_logs()>
-#
-#=over 4
-#
-#=item * Purpose
-#
-#Parse the F<build.log> created by running C<run_cpanm()>, creating JSON files
-#which log the results of attempting to install each module in the list or
-#file.
-#
-#=item * Arguments
-#
-#    $ranalysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
-#
-#Hash reference which, at the present time, can only take one element:
-#C<verbose>.  Optional.
-#
-#=item * Return Value
-#
-#String holding absolute path to the directory holding F<.log.json> files for a
-#particular run of C<run_cpanm()>.
-#
-#=item * Comment
-#
-#=back
-#
-#=cut
-#
-#sub analyze_cpanm_build_logs {
-#    my ($self, $args) = @_;
-#    croak "analyze_cpanm_build_logs: Must supply hash ref as argument"
-#        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
-#    my $verbose = delete $args->{verbose} || '';
-#
-#    my $gzlog = $self->{gzlog};
-#    unless (-d $self->{analysis_dir}) { make_path($self->{analysis_dir}, { mode => 0755 }); }
-#    croak "Could not locate $self->{analysis_dir}" unless (-d $self->{analysis_dir});
-#
-#    my ($fh, $working_log) = tempfile();
-#    system(qq|gunzip -c $gzlog > $working_log|)
-#        and croak "Unable to gunzip $gzlog to $working_log";
-#
-#    my $reporter = CPAN::cpanminus::reporter::RetainReports->new(
-#      force => 1, # ignore mtime check on build.log
-#      build_logfile => $working_log,
-#      build_dir => $self->get_cpanm_dir,
-#      'ignore-versions' => 1,
-#    );
-#    croak "Unable to create new reporter for $working_log"
-#        unless defined $reporter;
-#    no warnings 'redefine';
-#    local *CPAN::cpanminus::reporter::RetainReports::_check_cpantesters_config_data = sub { 1 };
-#    $reporter->set_report_dir($self->{analysis_dir});
-#    $reporter->run;
-#    say "See results in $self->{analysis_dir}" if $verbose;
-#
-#    return $self->{analysis_dir};
-#}
-#
+=head2 C<analyze_cpanm_build_logs()>
+
+=over 4
+
+=item * Purpose
+
+Parse the F<build.log> created by running C<run_cpanm()>, creating JSON files
+which log the results of attempting to install each module in the list or
+file.
+
+=item * Arguments
+
+    $ranalysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
+
+Hash reference which, at the present time, can only take one element:
+C<verbose>.  Optional.
+
+=item * Return Value
+
+String holding absolute path to the directory holding F<.log.json> files for a
+particular run of C<run_cpanm()>.
+
+=item * Comment
+
+=back
+
+=cut
+
+sub analyze_cpanm_build_logs {
+    my ($self, $args) = @_;
+    croak "analyze_cpanm_build_logs: Must supply hash ref as argument"
+        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
+    my $verbose = delete $args->{verbose} || '';
+
+    my $gzlog = $self->{gzlog};
+    unless (-d $self->{analysis_dir}) { make_path($self->{analysis_dir}, { mode => 0755 }); }
+    croak "Could not locate $self->{analysis_dir}" unless (-d $self->{analysis_dir});
+
+    my ($fh, $working_log) = tempfile();
+    system(qq|gunzip -c $gzlog > $working_log|)
+        and croak "Unable to gunzip $gzlog to $working_log";
+
+    my $reporter = CPAN::cpanminus::reporter::RetainReports->new(
+      force => 1, # ignore mtime check on build.log
+      build_logfile => $working_log,
+      build_dir => $self->get_cpanm_dir,
+      'ignore-versions' => 1,
+    );
+    croak "Unable to create new reporter for $working_log"
+        unless defined $reporter;
+    no warnings 'redefine';
+    local *CPAN::cpanminus::reporter::RetainReports::_check_cpantesters_config_data = sub { 1 };
+    $reporter->set_report_dir($self->{analysis_dir});
+    $reporter->run;
+    say "See results in $self->{analysis_dir}" if $verbose;
+
+    return $self->{analysis_dir};
+}
+
 #=head2 C<analyze_json_logs()>
 #
 #=over 4
