@@ -644,8 +644,8 @@ sub prepare_testing_directory {
     $self->{this_perl} = $this_perl;
 
     my $this_cpan = File::Spec->catfile($self->get_bin_dir, 'cpan');
-    my $invoke = "$this_cpan -v";
-    my $rv = system(qq{$invoke})
+    $invoke = "$this_cpan -v";
+    $rv = system(qq{$invoke})
         and croak "Could not run cpan executable at $this_cpan";
     $self->{this_cpan} = $this_cpan;
 
@@ -844,7 +844,7 @@ calling C<$self->get_cpanm_dir()>.
 sub fetch_cpanm {
     my $self = shift;
 
-    my $cpanm_dir = File::Spec->catdir($self->get_install_dir(), '.cpanm');
+    my $cpanm_dir = File::Spec->catdir($self->get_testing_dir(), '.cpanm');
     unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
     croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
     $self->{cpanm_dir} = $cpanm_dir;
@@ -1025,7 +1025,7 @@ sub run_cpanm {
 
     unless ($self->{cpanm_dir}) {
         say "Defining previously undefined cpanm_dir" if $verbose;
-        my $cpanm_dir = File::Spec->catdir($self->get_install_dir(), '.cpanm');
+        my $cpanm_dir = File::Spec->catdir($self->get_testing_dir(), '.cpanm');
         unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
         croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
         $self->{cpanm_dir} = $cpanm_dir;
