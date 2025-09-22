@@ -19,6 +19,7 @@ BEGIN {
 
 use Carp;
 use Cwd;
+use File::Temp ( qw| tempfile |);
 use Capture::Tiny ( qw | capture_stdout | );
 #use Data::Dump ( qw| dd pp | );
 
@@ -124,7 +125,7 @@ $self->fetch_cpanm();
 my $this_cpanm = $self->get_this_cpanm();
 is($this_cpanm, $expected_cpanm, "cpanm installed where expected");
 
-my $expected_cpanm_dir = File::Spec->catdir($self->get_install_dir, '.cpanm');
+my $expected_cpanm_dir = File::Spec->catdir($self->get_testing_dir, '.cpanm');
 my $this_cpanm_dir = $self->get_cpanm_dir();
 is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpanm_dir");
 
@@ -187,7 +188,7 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
         like($@, qr/run_cpanm: '$bad_element' is not a valid element/,
             "Got expected error message: bad argument");
     }
-#
+
     {
         local $@;
         eval { $self->run_cpanm( {
@@ -247,82 +248,81 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
     }
 }
 
+{
+    {
+        note("run_cpanm(): Testing via 'module_list'");
+        local $@;
+        my $list = [
+            map { File::Spec->catfile($cwd, 't', 'data', $_) }
+            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
+        ];
 
-#
-#    {
-#        note("run_cpanm(): Testing via 'module_list'");
-#        local $@;
-#        my $list = [
-#            map { File::Spec->catfile($cwd, 't', 'data', $_) }
-#            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
-#        ];
-#
-#        # TODO: Add tests which capture verbose output and match it against
-#        # expectations.
-#
-#        my $gzipped_build_log;
-#        my $stdout = capture_stdout {
-#            $gzipped_build_log = $self->run_cpanm( {
-#                module_list => $list,
-#                title       => 'one-pass-one-fail',
-#                verbose     => 1,
-#            } );
-#        };
-#        unless ($@) {
-#            pass("run_cpanm operated as intended; see $gzipped_build_log for PASS/FAIL/etc.");
-#        }
-#        else {
-#            fail("run_cpanm did not operate as intended: $@");
-#        }
-#        ok(-f $gzipped_build_log, "Located $gzipped_build_log");
-#        like($stdout,
-#            qr/cpanm_dir:.*?\.cpanm/s,
-#            "run_cpanm(): Got expected verbose output: cpanm_dir"
-#        );
-#        like($stdout,
-#            qr/See gzipped build.log in $gzipped_build_log/s,
-#            "run_cpanm(): Got expected verbose output: build.log"
-#        );
-#    }
-#
-#    {
-#        note("run_cpanm(): Testing via 'module_file'");
-#        local $@;
-#        my $list = [
-#            map { File::Spec->catfile($cwd, 't', 'data', $_) }
-#            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
-#        ];
-#        my ($IN, $file) = tempfile('005_files_for_cpanm_XXXXX', UNLINK => 1);
-#        open $IN, '>', $file or croak "Could not open $file for writing";
-#        say $IN $_ for @{$list};
-#        close $IN or croak "Could not close $file after writing";
-#        ok(-f $file, "Located $file for testing");
-#        my $gzipped_build_log = $self->run_cpanm( {
-#            module_file => $file,
-#            title       => 'second-one-pass-one-fail',
-#        } );
-#        unless ($@) {
-#            pass("run_cpanm operated as intended; see $gzipped_build_log for PASS/FAIL/etc.");
-#        }
-#        else {
-#            fail("run_cpanm did not operate as intended");
-#        }
-#        ok(-f $gzipped_build_log, "Located $gzipped_build_log");
-#    }
-#
+        # TODO: Add tests which capture verbose output and match it against
+        # expectations.
+
+        my $gzipped_build_log;
+        my $stdout = capture_stdout {
+            $gzipped_build_log = $self->run_cpanm( {
+                module_list => $list,
+                title       => 'one-pass-one-fail',
+                verbose     => 1,
+            } );
+        };
+        unless ($@) {
+            pass("run_cpanm operated as intended; see $gzipped_build_log for PASS/FAIL/etc.");
+        }
+        else {
+            fail("run_cpanm did not operate as intended: $@");
+        }
+        ok(-f $gzipped_build_log, "Located $gzipped_build_log");
+        like($stdout,
+            qr/cpanm_dir:.*?\.cpanm/s,
+            "run_cpanm(): Got expected verbose output: cpanm_dir"
+        );
+        like($stdout,
+            qr/See gzipped build.log in $gzipped_build_log/s,
+            "run_cpanm(): Got expected verbose output: build.log"
+        );
+    }
+
+    {
+        note("run_cpanm(): Testing via 'module_file'");
+        local $@;
+        my $list = [
+            map { File::Spec->catfile($cwd, 't', 'data', $_) }
+            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
+        ];
+        my ($IN, $file) = tempfile('005_files_for_cpanm_XXXXX', UNLINK => 1);
+        open $IN, '>', $file or croak "Could not open $file for writing";
+        say $IN $_ for @{$list};
+        close $IN or croak "Could not close $file after writing";
+        ok(-f $file, "Located $file for testing");
+        my $gzipped_build_log = $self->run_cpanm( {
+            module_file => $file,
+            title       => 'second-one-pass-one-fail',
+        } );
+        unless ($@) {
+            pass("run_cpanm operated as intended; see $gzipped_build_log for PASS/FAIL/etc.");
+        }
+        else {
+            fail("run_cpanm did not operate as intended");
+        }
+        ok(-f $gzipped_build_log, "Located $gzipped_build_log");
+    }
+
 #    note("analyze_cpanm_build_logs()");
 #
 #    my $ranalysis_dir;
 #    {
 #        local $@;
-#        eval { $self = Test::Against::Build->analyze_cpanm_build_logs([]); };
+#        eval { $self->analyze_cpanm_build_logs([]); };
 #        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
 #            "analyze_cpanm_build_logs: Got expected error message for non-hashref argument");
 #    }
 #
 #    {
 #        local $@;
-#        eval { $self = Test::Against::Build->analyze_cpanm_build_logs(); };
+#        eval { $self->analyze_cpanm_build_logs(); };
 #        like($@, qr/analyze_cpanm_build_logs: Must supply hash ref as argument/,
 #            "analyze_cpanm_build_logs: Got expected error message for no argument");
 #    }
@@ -334,7 +334,7 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
 #            "analyze_cpanm_build_logs(): Got expected error message for lack of hash ref");
 #    }
 #
-#    my $stdout = capture_stdout {
+#    $stdout = capture_stdout {
 #        $ranalysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
 #    };
 #    ok(-d $ranalysis_dir,
@@ -375,6 +375,6 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
 #    my $fcsvfile = $self->analyze_json_logs( { verbose => 1 , sep_char => ',' } );
 #    ok($fcsvfile, "analyze_json_logs() returned true value");
 #    ok(-f $fcsvfile, "Located '$fcsvfile'");
-#}
+}
 
 done_testing();
