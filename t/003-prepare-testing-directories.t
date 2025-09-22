@@ -1,7 +1,9 @@
 # -*- perl -*-
 # t/003-prepare-testing-directories.t
-# Check module loading, creation of testing directories
-# Does not presume 'git' or installation of perl executable
+
+# Presumes perl executable has been installed elsewhere on disk but does
+# not assume that 'git' was used to install that perl
+
 use strict;
 use warnings;
 
@@ -21,6 +23,8 @@ use Capture::Tiny ( qw | capture_stdout | );
 
 BEGIN { use_ok( 'Test::Against::Commit' ); }
 
+note("Presuming installed perl, testing new()");
+
 # We can conduct testing with a real installed perl executable provided that
 # we can locate one at a path like this:
 #   /application_dir/project_dir/install_dir/bin/perl
@@ -36,7 +40,7 @@ my $stdout = capture_stdout {
 };
 chomp $stdout;
 like($stdout,
-    qr/This\sis\sperl\s5,\sversion\s\d\d,\ssubversion\s\d/, 
+    qr/This\sis\sperl\s5,\sversion\s\d\d,\ssubversion\s\d/,
     "Got 'perl -v' output"
 );
 
@@ -66,14 +70,10 @@ ok(-d $install_dir, "Got install directory: $install_dir");
 $testing_dir = $self->get_testing_dir;
 ok(-d $testing_dir, "Got testing directory: $testing_dir");
 
-#say STDERR "CCC:";
-#pp($self);
+note("prepare_testing_directory()");
 
 ok($self->prepare_testing_directory(),
     "prepare_testing_directory() returned true value");
-
-#say STDERR "DDD:";
-#pp($self);
 
 my $bin_dir = $self->get_bin_dir();
 ok(-d $bin_dir, "Located bin_dir at $bin_dir");
@@ -84,18 +84,45 @@ ok(-d $lib_dir, "Located lib_dir at $lib_dir");
 my $this_perl = $self->get_this_perl();
 ok(-x $this_perl, "Located executable perl at $this_perl");
 
-#{
-#    local $@;
-#    eval { $self->get_this_cpanm(); };
-#    like($@, qr/location of cpanm has not yet been defined/,
-#        "Got exception for premature get_this_cpanm()");
-#}
-#
-#{
-#    local $@;
-#    eval { $self->get_cpanm_dir(); };
-#    like($@, qr/cpanm directory has not yet been defined/,
-#        "Got exception for premature get_cpanm_dir()");
-#}
+my $this_cpan = $self->get_this_cpan();
+ok(-x $this_cpan, "Located executable cpan at $this_cpan");
+
+# While we have pre-installed perl, we have not yet installed cpanm. Hence the
+# following tests should be valid.
+
+note("fetch_cpanm error conditions");
+
+my $expected_cpanm = File::Spec->catfile($bin_dir, 'cpanm');
+
+# Once we've installed cpanm (as we will do later in this file), the next two
+# tests become irrelevant and should be skipped.
+SKIP: {
+    skip "cpanm already installed", 2
+        if (-x $expected_cpanm);
+    {
+        local $@;
+        eval { $self->get_this_cpanm(); };
+        like($@, qr/location of cpanm has not yet been defined/,
+            "Got exception for premature get_this_cpanm()");
+    }
+
+    {
+        local $@;
+        eval { $self->get_cpanm_dir(); };
+        like($@, qr/cpanm directory has not yet been defined/,
+            "Got exception for premature get_cpanm_dir()");
+    }
+}
+
+note("fetch_cpanm");
+
+$self->fetch_cpanm();
+
+my $this_cpanm = $self->get_this_cpanm();
+is($this_cpanm, $expected_cpanm, "cpanm installed where expected");
+
+my $expected_cpanm_dir = File::Spec->catdir($self->get_install_dir, '.cpanm');
+my $this_cpanm_dir = $self->get_cpanm_dir();
+is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpanm_dir");
 
 done_testing();

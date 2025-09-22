@@ -28,6 +28,8 @@ Test::Against::Commit - Test CPAN modules against Perl dev releases
         install          => <commit_ID_tag_or_branch>,
     } );
 
+    $self->prepare_testing_directories();
+
     my $this_cpanm = $self->fetch_cpanm( { verbose => 1 } );
 
     my $gzipped_build_log = $self->run_cpanm( {
@@ -634,11 +636,18 @@ sub prepare_testing_directory {
             croak "Could not locate $subdir; have you built and installed a perl executable?";
         }
     }
-    my $thisperl = File::Spec->catfile($self->get_bin_dir, 'perl');
-    my $libdir = $self->get_lib_dir();
-    my $invoke = "$thisperl -I$libdir";
+    my $lib_dir = $self->get_lib_dir();
+    my $this_perl = File::Spec->catfile($self->get_bin_dir, 'perl');
+    my $invoke = "$this_perl -I$lib_dir";
     my $rv = system(qq{$invoke -v | head -n 2 | tail -n 1})
-        and croak "Could not run perl executable at $thisperl";
+        and croak "Could not run perl executable at $this_perl";
+    $self->{this_perl} = $this_perl;
+
+    my $this_cpan = File::Spec->catfile($self->get_bin_dir, 'cpan');
+    my $invoke = "$this_cpan -v";
+    my $rv = system(qq{$invoke})
+        and croak "Could not run cpan executable at $this_cpan";
+    $self->{this_cpan} = $this_cpan;
 
     return $self;
 }
@@ -754,35 +763,68 @@ sub get_this_perl {
     }
 }
 
+=head2 C<get_this_cpan()>
+
+=over 4
+
+=item * Purpose
+
+Identify the location of the F<cpan> executable file.
+
+=item * Arguments
+
+    $this_cpan = $self->get_this_cpan()
+
+=item * Return Value
+
+String holding the path to the F<cpan> executable being tested.
+
+=item * Comment
+
+Will throw an exception if such a F<cpan> executable has not yet been installed.  We will use F<cpan> to subsequently install F<App::cpanminus>.
+
+=back
+
+=cut
+
+sub get_this_cpan {
+    my $self = shift;
+    if ($self->{this_cpan}) {
+        return $self->{this_cpan};
+    }
+    else {
+        local $@;
+        my $this_cpan;
+        eval {
+            $this_cpan = File::Spec->catfile($self->get_bin_dir, 'cpan');
+        };
+        if ($@) {
+            croak $@;
+        }
+        elsif (-e $this_cpan) {
+            $self->{this_cpan} = $this_cpan;
+            return $self->{this_cpan};
+        }
+        else {
+            croak "No executable cpan found at: $this_cpan";
+        }
+    }
+}
+
 =head2 C<fetch_cpanm() get_this_cpanm() get_cpanm_dir()>
 
 =over 4
 
 =item * Purpose
 
-Determine whether F<cpanm> has been installed.  If it has not, fetch the
-fatpacked F<cpanm> executable and install it against the newly installed
-F<perl>.
+Determine whether F<cpanm> has been installed.  If it has not, install
+F<App::cpanminus> and the F<cpanm> executable against the installed F<perl>.
 
 =item * Arguments
 
-    my $rv = $self->fetch_cpanm( { verbose => 1 } );
+    my $rv = $self->fetch_cpanm();
 
-Hash reference with these elements:
-
-=over 4
-
-=item * C<uri>
-
-String holding URI from which F<cpanm> will be downloaded.  Optional; defaults
-to L<https://fastapi.metacpan.org/source/MIYAGAWA/App-cpanminus-1.7048/bin/cpanm>.
-
-=item * C<verbose>
-
-Extra information provided on STDOUT.  Optional; defaults to being off;
-provide a Perl-true value to turn it on.  Scope is limited to this method.
-
-=back
+None.  All information is already inside the object.  No C<verbose> output.
 
 =item * Return Value
 
@@ -801,10 +843,7 @@ calling C<$self->get_cpanm_dir()>.
 =cut
 
 sub fetch_cpanm {
-    my ($self, $args) = @_;
-    croak "fetch_cpanm: Must supply hash ref as argument"
-        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
-    my $verbose = delete $args->{verbose} || '';
+    my $self = shift;
 
     my $cpanm_dir = File::Spec->catdir($self->get_install_dir(), '.cpanm');
     unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
@@ -813,11 +852,12 @@ sub fetch_cpanm {
 
     my $bin_dir = $self->get_bin_dir();
     my $this_cpan = File::Spec->catfile($bin_dir, 'cpan');
-    system(qq| $this_cpan -v 1>/dev/null |) and croak "Unable call 'cpan -v'";
+    $self->{this_cpan} = $this_cpan;
+    system(qq| $this_cpan -v 1>/dev/null |) and croak "Unable to call 'cpan -v'";
     system(qq| $this_cpan App::cpanminus 1>/dev/null |)
         and croak "Unable to use cpan to install App::cpanminus";
     my $this_cpanm = File::Spec->catfile($bin_dir, 'cpanm');
-    system(qq| $this_cpanm -V 1>/dev/null |) and croak "Unable call 'cpanm -V'";
+    system(qq| $this_cpanm -V 1>/dev/null |) and croak "Unable to call 'cpanm -V'";
     $self->{this_cpanm} = $this_cpanm;
 
     return $self;
