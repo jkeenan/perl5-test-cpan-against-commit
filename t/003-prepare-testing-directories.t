@@ -176,6 +176,13 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
 
     {
         local $@;
+        eval { $self->run_cpanm( ); };
+        like($@, qr/run_cpanm: Must supply hash ref as argument/,
+            "Got expected error message: absence of argument");
+    }
+
+    {
+        local $@;
         eval { $self->run_cpanm( [ module_file => 'foo', title => 'not-cpan-river' ] ); };
         like($@, qr/run_cpanm: Must supply hash ref as argument/,
             "Got expected error message: absence of hashref");
@@ -334,6 +341,7 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
             "analyze_cpanm_build_logs(): Got expected error message for lack of hash ref");
     }
 
+    # TODO: Test this method without verbose => 1
     $stdout = capture_stdout {
         $ranalysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
     };
@@ -368,10 +376,12 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
             "analyze_json_logs(): Got expected error message: unsupported delimiter");
     }
 
+    # TODO: Test this method without verbose => 1
     my $fpsvfile = $self->analyze_json_logs( { verbose => 1 } );
     ok($fpsvfile, "analyze_json_logs() returned true value");
     ok(-f $fpsvfile, "Located '$fpsvfile'");
 
+    # TODO: Test this method without verbose => 1
     my $fcsvfile = $self->analyze_json_logs( { verbose => 1 , sep_char => ',' } );
     ok($fcsvfile, "analyze_json_logs() returned true value");
     ok(-f $fcsvfile, "Located '$fcsvfile'");

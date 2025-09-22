@@ -1290,6 +1290,12 @@ files for a given run.
 
 sub analyze_json_logs {
     my ($self, $args) = @_;
+    # TODO: If we don't have an $args supplied at all, that's okay provided we
+    # can ensure that we will have a default sep_char set
+    # Test this method with hash ref but lacking 'verbose'
+    # Test this method with hash ref but lacking 'sep_char'
+    # Test this method with hash ref but both KVPs
+    # Test this method with no arg
     croak "analyze_json_logs: Must supply hash ref as argument"
         unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
     my $verbose     = delete $args->{verbose}   || '';
@@ -1299,11 +1305,13 @@ sub analyze_json_logs {
 
     # Locate our log.json files
     my $json_log_files = $self->_list_log_files();
+    # Test without verbose
     dd($json_log_files) if $verbose;
 
     # As a precaution, we archive those log.json files.
     $self->_archive_log_files( {
         json_log_files  => $json_log_files,
+        # $verbose: ensure that it is initialized, if only to ''
         verbose         => $verbose,
     } );
 
@@ -1329,8 +1337,10 @@ sub analyze_json_logs {
 
     # Now we create a CSV file (really ... a PSV)
     my $fcdvfile = $self->_create_csv_file( {
+        # $verbose: ensure that it is initialized, if only to ''
         sep_char        => $sep_char,
         data            => \%data,
+        # $verbose: ensure that it is initialized, if only to ''
         verbose         => $verbose,
     } );
 
@@ -1339,11 +1349,11 @@ sub analyze_json_logs {
 
 sub _list_log_files {
     my $self = shift;
-    my $vranalysis_dir = $self->{analysis_dir};
-    opendir my $DIRH, $vranalysis_dir or croak "Unable to open $vranalysis_dir for reading";
+    my $analysis_dir = $self->{analysis_dir};
+    opendir my $DIRH, $analysis_dir or croak "Unable to open $analysis_dir for reading";
     my @json_log_files = sort map { File::Spec->catfile('analysis', $_) }
         grep { m/\.log\.json$/ } readdir $DIRH;
-    closedir $DIRH or croak "Unable to close $vranalysis_dir after reading";
+    closedir $DIRH or croak "Unable to close $analysis_dir after reading";
     return \@json_log_files;
 }
 
@@ -1359,15 +1369,18 @@ sub _archive_log_files {
         'gz'
     ) );
     my $foutput = File::Spec->catfile($self->{storage_dir}, $output);
+    # Test this without $args->{verbose}
     say "Output will be: $foutput" if $args->{verbose};
     my $versioned_results_dir = $self->{results_dir};
     my $previous_cwd = cwd();
     chdir $self->{results_dir} or croak "Unable to chdir to $self->{results_dir}";
+    # Test this without $args->{verbose}
     say "Now in $self->{results_dir}" if $args->{verbose};
     my $tar = Archive::Tar->new;
     $tar->add_files(@{$args->{json_log_files}});
     $tar->write($foutput, COMPRESS_GZIP);
     croak "$foutput not created" unless (-f $foutput);
+    # Test this without $args->{verbose}
     say "Created archive $foutput" if $args->{verbose};
     chdir $previous_cwd or croak "Unable to change back to $previous_cwd";
     return 1;
@@ -1382,6 +1395,7 @@ sub _create_csv_file {
         (($args->{sep_char} eq ',') ? 'csv' : 'psv'),
     ) );
     my $fcdvfile = File::Spec->catfile($self->{storage_dir}, $cdvfile);
+    # Test this without $args->{verbose}
     say "Output will be: $fcdvfile" if $args->{verbose};
 
     my @fields = ( qw| author distname grade | );
@@ -1407,6 +1421,7 @@ sub _create_csv_file {
     }
     close $OUT or croak "Unable to close $fcdvfile after writing";
     croak "$fcdvfile not created" unless (-f $fcdvfile);
+    # Test this without $args->{verbose}
     say "Examine ",
         (($args->{sep_char} eq ',') ? 'comma' : 'pipe'),
         "-separated values in $fcdvfile"
