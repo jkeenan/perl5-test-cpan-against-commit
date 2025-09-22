@@ -218,7 +218,7 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
     {
         local $@;
         my $list = [
-            map { File::Spec->catfile($cwd, 't', 'data', $_) }
+            map { File::Spec->catfile($cwd, 't', 'data', 'M', 'ME', 'METATEST', $_) }
             ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
         ];
         eval {
@@ -234,7 +234,7 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
     {
         local $@;
         my $list = [
-            map { File::Spec->catfile($cwd, 't', 'data', $_) }
+            map { File::Spec->catfile($cwd, 't', 'data', 'M', 'ME', 'METATEST', $_) }
             ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
         ];
         eval {
@@ -253,7 +253,7 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
         note("run_cpanm(): Testing via 'module_list'");
         local $@;
         my $list = [
-            map { File::Spec->catfile($cwd, 't', 'data', $_) }
+            map { File::Spec->catfile($cwd, 't', 'data', 'M', 'ME', 'METATEST', $_) }
             ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
         ];
 
@@ -289,7 +289,7 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
         note("run_cpanm(): Testing via 'module_file'");
         local $@;
         my $list = [
-            map { File::Spec->catfile($cwd, 't', 'data', $_) }
+            map { File::Spec->catfile($cwd, 't', 'data', 'M', 'ME', 'METATEST', $_) }
             ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
         ];
         my ($IN, $file) = tempfile('005_files_for_cpanm_XXXXX', UNLINK => 1);
@@ -344,37 +344,37 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
         "analyze_cpanm_build_logs(): Got expected verbose output: cpanm_dir"
     );
 
-#    note("analyze_json_logs()");
-#
-#    my $rv;
-#    {
-#        local $@;
-#        eval { $rv = $self->analyze_json_logs(); };
-#        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
-#            "analyze_json_logs(): Got expected error message: no defined argument");
-#    }
-#
-#    {
-#        local $@;
-#        eval { $rv = $self->analyze_json_logs( verbose => 1 ); };
-#        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
-#            "analyze_json_logs(): Got expected error message: absence of hash ref");
-#    }
-#
-#    {
-#        local $@;
-#        eval { $rv = $self->analyze_json_logs( { verbose => 1, sep_char => "\t" } ); };
-#        like($@, qr/analyze_json_logs: Currently only pipe \('\|'\) and comma \(','\) are supported as delimiter characters/,
-#            "analyze_json_logs(): Got expected error message: unsupported delimiter");
-#    }
-#
-#    my $fpsvfile = $self->analyze_json_logs( { verbose => 1 } );
-#    ok($fpsvfile, "analyze_json_logs() returned true value");
-#    ok(-f $fpsvfile, "Located '$fpsvfile'");
-#
-#    my $fcsvfile = $self->analyze_json_logs( { verbose => 1 , sep_char => ',' } );
-#    ok($fcsvfile, "analyze_json_logs() returned true value");
-#    ok(-f $fcsvfile, "Located '$fcsvfile'");
+    note("analyze_json_logs()");
+
+    my $rv;
+    {
+        local $@;
+        eval { $rv = $self->analyze_json_logs(); };
+        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
+            "analyze_json_logs(): Got expected error message: no defined argument");
+    }
+
+    {
+        local $@;
+        eval { $rv = $self->analyze_json_logs( verbose => 1 ); };
+        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
+            "analyze_json_logs(): Got expected error message: absence of hash ref");
+    }
+
+    {
+        local $@;
+        eval { $rv = $self->analyze_json_logs( { verbose => 1, sep_char => "\t" } ); };
+        like($@, qr/analyze_json_logs: Currently only pipe \('\|'\) and comma \(','\) are supported as delimiter characters/,
+            "analyze_json_logs(): Got expected error message: unsupported delimiter");
+    }
+
+    my $fpsvfile = $self->analyze_json_logs( { verbose => 1 } );
+    ok($fpsvfile, "analyze_json_logs() returned true value");
+    ok(-f $fpsvfile, "Located '$fpsvfile'");
+
+    my $fcsvfile = $self->analyze_json_logs( { verbose => 1 , sep_char => ',' } );
+    ok($fcsvfile, "analyze_json_logs() returned true value");
+    ok(-f $fcsvfile, "Located '$fcsvfile'");
 }
 
 done_testing();
