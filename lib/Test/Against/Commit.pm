@@ -624,15 +624,8 @@ TK
 sub prepare_testing_directory {
     my $self = shift;
 
-    my $install_dir = File::Spec->catdir($self->{testing_dir}, $self->{install});
-    if (-d $install_dir) {
-        $self->{install_dir} = $install_dir;
-    }
-    else {
-        croak "Could not locate $install_dir; have you built and installed a perl executable?";
-    }
     for my $dir (qw| bin lib|) {
-        my $subdir = File::Spec->catdir($self->{install_dir}, $dir);
+        my $subdir = File::Spec->catdir($self->{testing_dir}, $dir);
         if (-d $subdir) {
             my $this = $dir . '_dir';
             $self->{$this} = $subdir;
