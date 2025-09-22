@@ -160,7 +160,7 @@ the Perl 5 core distribution on installability of CPAN libraries.
 
 A subdirectory of the I<project directory> holding one installation.  I<Example:>
 
-    /path-to-application/                   # <-- application directory
+    /path-to-application/                         # <-- application directory
     /path-to-application/goto-fatal/              # <-- project directory
     /path-to-application/goto-fatal/23ae7f95ea/   # <-- installation directory
     /path-to-application/goto-fatal/v5.43.3/      # <-- another installation directory
@@ -714,7 +714,6 @@ sub get_lib_dir {
     }
 }
 
-
 =head2 C<get_this_perl()>
 
 =over 4
@@ -926,9 +925,14 @@ Mutually exclusive; you may use one or the other but not both.
 
 The value of C<module_list> must be an array reference holding a list of
 modules for which you wish to assess the impact of changes in the Perl 5 core
-distribution.  In either case the module names are spelled in
-C<Some::Module> format -- I<i.e.>, double-colons -- rather than in
-C<Some-Distribution> format (hyphens).
+distribution.
+
+The value of C<module_file> must be an absolute path to a file which holds a
+list of modules, one module per line.
+
+In either case the module names are spelled in C<Some::Module> format --
+I<i.e.>, double-colons -- rather than in C<Some-Distribution> format
+(hyphens).
 
 =item * C<title>
 
@@ -950,16 +954,21 @@ of this file, using the arguments supplied, would be:
 
    cpan-river-1000.perl-5.43.6.01.build.log.gz
 
+TODO: Verify that naming convention.
+
 =item * Comment
 
-The method confirms the existence of several directories underneath the
+The method creates or confirms the existence of several directories underneath the
 I<results_dir> directory discussed above.  These are illustrated as follows:
 
-    /path/to/application/results/
-                        /results/perl-5.43.6/
-                        /results/perl-5.43.6/analysis/
-                        /results/perl-5.43.6/buildlogs/
-                        /results/perl-5.43.6/storage/
+    /path-to-application/                                 # <-- application directory
+    /path-to-application/goto-fatal/                      # <-- project directory
+    /path-to-application/goto-fatal/23ae7f95ea/           # <-- installation directory
+    /path-to-application/goto-fatal/23ae7f95ea/testing/   # <-- testing directory
+    /path-to-application/goto-fatal/23ae7f95ea/results/   # <-- testing directory
+    /path-to-application/goto-fatal/23ae7f95ea/results/buildlogs/   # <-- buildlogs directory
+    /path-to-application/goto-fatal/23ae7f95ea/results/analysis/   # <-- analysis directory
+    /path-to-application/goto-fatal/23ae7f95ea/results/storage/   # <-- storage directory
 
 =back
 
@@ -1054,19 +1063,99 @@ sub run_cpanm {
 
 sub setup_results_directories {
     my $self = shift;
-    my $vresults_dir = File::Spec->catdir($self->get_results_dir, $self->get_install());
-    my $buildlogs_dir = File::Spec->catdir($vresults_dir, 'buildlogs');
-    my $analysis_dir = File::Spec->catdir($vresults_dir, 'analysis');
-    my $storage_dir = File::Spec->catdir($vresults_dir, 'storage');
-    my @created = make_path( $vresults_dir, $buildlogs_dir, $analysis_dir, $storage_dir,
+    my $results_dir = $self->get_results_dir();
+    my $buildlogs_dir = File::Spec->catdir($results_dir, 'buildlogs');
+    my $analysis_dir = File::Spec->catdir($results_dir, 'analysis');
+    my $storage_dir = File::Spec->catdir($results_dir, 'storage');
+    my @created = make_path( $buildlogs_dir, $analysis_dir, $storage_dir,
         { mode => 0755 });
     for my $dir (@created) { croak "$dir not found" unless -d $dir; }
-    $self->{vresults_dir} = $vresults_dir;
     $self->{buildlogs_dir} = $buildlogs_dir;
     $self->{analysis_dir} = $analysis_dir;
     $self->{storage_dir} = $storage_dir;
     return scalar(@created);
 }
+
+=head2 C<get_buildlogs_dir() get_analysis_dir() get_storage_dir()>
+
+=over 4
+
+=item * Purpose
+
+Once C<run_cpanm()> has been run, three additional methods become available to
+help code determine where output data are located.
+
+=over 4
+
+=item * buildlogs directory (I<buildlogs_dir>)
+
+The directory underneath the I<results directory> holding F<cpanm> F<build.log> files.
+
+=item * analysis directory (I<analysis_dir>)
+
+The directory underneath the I<results directory> holding files representing
+the parsed content of the build log of the most recent run.  These files are
+in C<.json> format.
+
+=item * storage directory (I<storage_dir>)
+
+The directory underneath the I<results directory> holding final output results.
+
+=back
+
+=item * Arguments
+
+    $buildlogs_dir = $self->get_buildlogs_dir();
+
+    $analysis_dir = $self->get_analysis_dir();
+
+    $storage_dir = $self->get_storage_dir();
+
+=item * Return Value
+
+String holding a path to the named directory.
+
+=item * Comment
+
+These directories are only confirmed to exist once internal method
+C<setup_results_directories()> has been executed.  (That method is called
+within C<run_cpanm()>.) Otherwise, these methods will throw exceptions.
+
+=back
+
+=cut
+
+sub get_buildlogs_dir {
+    my $self = shift;
+    if (! defined $self->{buildlogs_dir}) {
+        croak "buildlogs directory has not yet been defined";
+    }
+    else {
+        return $self->{buildlogs_dir};
+    }
+}
+
+sub get_analysis_dir {
+    my $self = shift;
+    if (! defined $self->{analysis_dir}) {
+        croak "analysis directory has not yet been defined";
+    }
+    else {
+        return $self->{analysis_dir};
+    }
+}
+
+sub get_storage_dir {
+    my $self = shift;
+    if (! defined $self->{storage_dir}) {
+        croak "storage directory has not yet been defined";
+    }
+    else {
+        return $self->{storage_dir};
+    }
+}
+
+
 
 sub gzip_cpanm_build_log {
     my ($self) = @_;

@@ -90,7 +90,7 @@ ok(-x $this_cpan, "Located executable cpan at $this_cpan");
 # While we have pre-installed perl, we have not yet installed cpanm. Hence the
 # following tests should be valid.
 
-note("fetch_cpanm error conditions");
+note("fetch_cpanm() error conditions");
 
 my $expected_cpanm = File::Spec->catfile($bin_dir, 'cpanm');
 
@@ -114,7 +114,7 @@ SKIP: {
     }
 }
 
-note("fetch_cpanm");
+note("fetch_cpanm()");
 
 $self->fetch_cpanm();
 
@@ -124,5 +124,46 @@ is($this_cpanm, $expected_cpanm, "cpanm installed where expected");
 my $expected_cpanm_dir = File::Spec->catdir($self->get_install_dir, '.cpanm');
 my $this_cpanm_dir = $self->get_cpanm_dir();
 is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpanm_dir");
+
+{
+    # This method is not publicly called; it's invoked within run_cpanm().
+    # I want to test it first so that I can update the directory names, names
+    # of KVPs in the object; etc.
+
+    note("setup_results_directories()");
+
+    my %expected_results_dirs = ();
+    $expected_results_dirs{buildlogs} = {
+        file    => File::Spec->catdir($self->get_results_dir, 'buildlogs'),
+    };
+    $expected_results_dirs{analysis} = {
+        file    => File::Spec->catdir($self->get_results_dir, 'analysis'),
+    };
+    $expected_results_dirs{storage} = {
+        file    => File::Spec->catdir($self->get_results_dir, 'storage'),
+    };
+    
+    for my $dir (keys %expected_results_dirs) {
+        SKIP: {
+            skip "$dir directory already installed", 1
+            if (-d $expected_results_dirs{$dir}{file});
+            local $@;
+            my $method = "get_${dir}_dir";
+            eval { $self->${method}(); };
+            like($@,
+                qr/$dir directory has not yet been defined/,
+                "Got exception for as yet undefined $dir directory"
+            );
+        }
+    }
+    
+    my $created = $self->setup_results_directories();
+
+    for my $dir (keys %expected_results_dirs) {
+        my $method = "get_${dir}_dir";
+        my $rv = $self->${method}();
+        ok(-d $rv, "Located $dir directory at $rv");
+    }
+}
 
 done_testing();
