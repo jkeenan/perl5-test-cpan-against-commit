@@ -515,9 +515,9 @@ pipe-separated-value (PSV) formats.
 
     $application_dir = $self->get_application_dir();
 
-    $testing_dir = $self->get_project_dir();
+    $project_dir = $self->get_project_dir();
 
-    $testing_dir = $self->get_install_dir();
+    $install_dir = $self->get_install_dir();
 
     $testing_dir = $self->get_testing_dir();
 
@@ -986,6 +986,12 @@ sub run_cpanm {
         croak "run_cpanm: '$k' is not a valid element"
             unless $eligible_args{$k};
     }
+
+    unless (defined $args->{title} and length $args->{title}) {
+        croak "Must supply value for 'title' element";
+    }
+    $self->{title} = $args->{title};
+
     if (exists $args->{module_file} and exists $args->{module_list}) {
         croak "run_cpanm: Supply either a file for 'module_file' or an array ref for 'module_list' but not both";
     }
@@ -998,14 +1004,7 @@ sub run_cpanm {
             unless ref($args->{module_list}) eq 'ARRAY';
     }
 
-    unless (defined $args->{title} and length $args->{title}) {
-        croak "Must supply value for 'title' element";
-    }
-    $self->{title} = $args->{title};
-
-    unless (-d $self->{install_dir}) {
-        $self->setup_results_directories();
-    }
+    $self->setup_results_directories();
 
     say "cpanm_dir: ", $self->get_cpanm_dir() if $verbose;
     local $ENV{PERL_CPANM_HOME} = $self->get_cpanm_dir();
