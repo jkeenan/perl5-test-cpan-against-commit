@@ -209,6 +209,13 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
 
     {
         local $@;
+        eval { $self->run_cpanm( { title => 'not-cpan-river' } ); };
+        like($@, qr/run_cpanm: Must supply one of 'module_file' or 'module_list'/,
+            "Got expected error message: need one of module_file or module_list");
+    }
+
+    {
+        local $@;
         my $bad_module_file = 'foo';
         eval { $self->run_cpanm( { module_file => $bad_module_file, title => 'not-cpan-river' } ); };
         like($@, qr/run_cpanm: Could not locate '$bad_module_file'/,

@@ -331,7 +331,7 @@ a starting point where those modules are working proprerly and assess their
 installability at later points.>
 
 Hence, once you decide to track a certain CPAN library, you should continue to
-include it in your list of modules to be tracked for the balance of that year's 
+include it in your list of modules to be tracked for the balance of that year's
 development cycle.  You can, it is true, B<add> additional modules to your
 list part way through the development cycle.  You simply won't have the same
 baseline data that you have for the modules you selected at the very
@@ -978,6 +978,7 @@ sub run_cpanm {
     my ($self, $args) = @_;
     croak "run_cpanm: Must supply hash ref as argument"
         unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
+
     my $verbose = delete $args->{verbose} || '';
     my %eligible_args = map { $_ => 1 } ( qw|
         module_file module_list title
@@ -994,6 +995,9 @@ sub run_cpanm {
 
     if (exists $args->{module_file} and exists $args->{module_list}) {
         croak "run_cpanm: Supply either a file for 'module_file' or an array ref for 'module_list' but not both";
+    }
+    if (! (exists $args->{module_file} or exists $args->{module_list}) ) {
+        croak "run_cpanm: Must supply one of 'module_file' or 'module_list'";
     }
     if ($args->{module_file}) {
         croak "run_cpanm: Could not locate '$args->{module_file}'"
@@ -1013,7 +1017,7 @@ sub run_cpanm {
     if ($args->{module_list}) {
         @modules = @{$args->{module_list}};
     }
-    elsif ($args->{module_file}) {
+    else {
         open my $IN, '<', $args->{module_file}
             or croak "Could not open $args->{module_file} for reading";
         while (my $m = <$IN>) {
