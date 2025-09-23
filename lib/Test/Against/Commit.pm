@@ -1184,10 +1184,18 @@ file.
 
 =item * Arguments
 
-    $ranalysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
+    $analysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
 
-Hash reference which, at the present time, can only take one element:
-C<verbose>.  Optional.
+or
+
+    $analysis_dir = $self->analyze_cpanm_build_logs( { verbose => '' } );
+
+or
+
+    $analysis_dir = $self->analyze_cpanm_build_logs();
+
+One optional argument, which must be a hash reference and, if it is, must
+contain exactly one element, C<verbose>, which must be set to a true or false value.
 
 =item * Return Value
 
@@ -1203,9 +1211,10 @@ particular run of C<run_cpanm()>.
 sub analyze_cpanm_build_logs {
     my ($self, $args) = @_;
 
-    croak "analyze_cpanm_build_logs: Must supply hash ref as argument"
-        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
-    my $verbose = delete $args->{verbose} || '';
+    croak "analyze_cpanm_build_logs: If argument is supplied, it must be a hash reference"
+        if ($args and ref($args) ne 'HASH');
+
+    my $verbose = $args->{verbose} //= '';
 
     my $gzlog = $self->{gzlog};
 
