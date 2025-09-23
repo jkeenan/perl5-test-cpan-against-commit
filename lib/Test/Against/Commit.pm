@@ -1007,14 +1007,6 @@ sub run_cpanm {
         $self->setup_results_directories();
     }
 
-    unless ($self->{cpanm_dir}) {
-        say "Defining previously undefined cpanm_dir" if $verbose;
-        my $cpanm_dir = File::Spec->catdir($self->get_testing_dir(), '.cpanm');
-        unless (-d $cpanm_dir) { make_path($cpanm_dir, { mode => 0755 }); }
-        croak "Could not locate $cpanm_dir" unless (-d $cpanm_dir);
-        $self->{cpanm_dir} = $cpanm_dir;
-    }
-
     say "cpanm_dir: ", $self->get_cpanm_dir() if $verbose;
     local $ENV{PERL_CPANM_HOME} = $self->get_cpanm_dir();
 
