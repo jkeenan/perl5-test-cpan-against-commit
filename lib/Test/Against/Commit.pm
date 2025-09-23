@@ -1155,12 +1155,9 @@ sub gzip_cpanm_build_log {
     my @files_found = grep { -f $_ and $_ =~ m/$pattern/ } readdir $DIRH;
     closedir $DIRH or croak "Unable to close buildlogs_dir after reading";
 
-    # In this new approach, we'll assume that we never do anything except
-    # exactly 1 run per monthly release.  Hence, there shouldn't be any files
-    # in this directory whatsoever.  We'll croak if there are such file.
-    # TODO: Now that we're in Test-Against-Commit, is that assumption still
-    # valid?
-    croak "There are already log files in '$self->{buildlogs_dir}'"if scalar(@files_found);
+    # It's not clear that we should die if there already exist log files in
+    # buildlogs_dir.
+    #croak "There are already log files in '$self->{buildlogs_dir}'"if scalar(@files_found);
 
     my $gzipped_build_log = join('.' => (
         $self->{title},
@@ -1205,13 +1202,12 @@ particular run of C<run_cpanm()>.
 
 sub analyze_cpanm_build_logs {
     my ($self, $args) = @_;
+
     croak "analyze_cpanm_build_logs: Must supply hash ref as argument"
         unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
     my $verbose = delete $args->{verbose} || '';
 
     my $gzlog = $self->{gzlog};
-    unless (-d $self->{analysis_dir}) { make_path($self->{analysis_dir}, { mode => 0755 }); }
-    croak "Could not locate $self->{analysis_dir}" unless (-d $self->{analysis_dir});
 
     my ($fh, $working_log) = tempfile();
     system(qq|gunzip -c $gzlog > $working_log|)
