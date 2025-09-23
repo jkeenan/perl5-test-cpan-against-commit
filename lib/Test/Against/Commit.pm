@@ -1007,11 +1007,6 @@ sub run_cpanm {
         $self->setup_results_directories();
     }
 
-    my $cpanreporter_dir = File::Spec->catdir($self->get_testing_dir(), '.cpanreporter');
-    unless (-d $cpanreporter_dir) { make_path($cpanreporter_dir, { mode => 0755 }); }
-    croak "Could not locate $cpanreporter_dir" unless (-d $cpanreporter_dir);
-    $self->{cpanreporter_dir} = $cpanreporter_dir;
-
     unless ($self->{cpanm_dir}) {
         say "Defining previously undefined cpanm_dir" if $verbose;
         my $cpanm_dir = File::Spec->catdir($self->get_testing_dir(), '.cpanm');
