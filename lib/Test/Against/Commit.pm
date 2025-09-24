@@ -1127,6 +1127,7 @@ sub process_modules {
         croak "$this_buildlog_link is not a symlink" unless (-l $this_buildlog_link);
         my $this_buildlog = readlink($this_buildlog_link);
         croak "$this_buildlog not found" unless (-f $this_buildlog);
+        say STDERR "FFF: $this_buildlog";
         push @buildlogs, $this_buildlog;
 
         $self->_process_one_report($this_buildlog);
@@ -1134,8 +1135,8 @@ sub process_modules {
 
     # End of loop.
     # This should lead to 100s of .json files in the analysis_dir.
-    # Next statement will be removed; replaced with something at end to
-    return [ [ @modules ], [ @buildlogs ] ];
+
+    return ( [ @modules ], [ @buildlogs ] );
 }
 
 sub setup_results_directories {
