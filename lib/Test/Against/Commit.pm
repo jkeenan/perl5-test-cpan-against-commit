@@ -974,9 +974,83 @@ I<results_dir> directory discussed above.  These are illustrated as follows:
 
 =cut
 
-sub run_cpanm {
+#sub run_cpanm {
+#    my ($self, $args) = @_;
+#    croak "run_cpanm: Must supply hash ref as argument"
+#        unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
+#
+#    my $verbose = delete $args->{verbose} || '';
+#    my %eligible_args = map { $_ => 1 } ( qw|
+#        module_file module_list title
+#    | );
+#    for my $k (keys %$args) {
+#        croak "run_cpanm: '$k' is not a valid element"
+#            unless $eligible_args{$k};
+#    }
+#
+#    unless (defined $args->{title} and length $args->{title}) {
+#        croak "Must supply value for 'title' element";
+#    }
+#    $self->{title} = $args->{title};
+#
+#    if (exists $args->{module_file} and exists $args->{module_list}) {
+#        croak "run_cpanm: Supply either a file for 'module_file' or an array ref for 'module_list' but not both";
+#    }
+#    if (! (exists $args->{module_file} or exists $args->{module_list}) ) {
+#        croak "run_cpanm: Must supply one of 'module_file' or 'module_list'";
+#    }
+#    if ($args->{module_file}) {
+#        croak "run_cpanm: Could not locate '$args->{module_file}'"
+#            unless (-f $args->{module_file});
+#    }
+#    if ($args->{module_list}) {
+#        croak "run_cpanm: Must supply array ref for 'module_list'"
+#            unless ref($args->{module_list}) eq 'ARRAY';
+#    }
+#
+#    $self->setup_results_directories();
+#
+#    say "cpanm_dir: ", $self->get_cpanm_dir() if $verbose;
+#    local $ENV{PERL_CPANM_HOME} = $self->get_cpanm_dir();
+#
+#    my @modules = ();
+#    if ($args->{module_list}) {
+#        @modules = @{$args->{module_list}};
+#    }
+#    else {
+#        open my $IN, '<', $args->{module_file}
+#            or croak "Could not open $args->{module_file} for reading";
+#        while (my $m = <$IN>) {
+#            chomp $m;
+#            push @modules, $m;
+#        }
+#        close $IN or croak "Could not close $args->{module_file} after reading";
+#    }
+#    my $libdir = $self->get_lib_dir();
+#    my @cmd = (
+#        $self->get_this_perl,
+#        "-I$libdir",
+#        $self->get_this_cpanm,
+#        @modules,
+#    );
+#    {
+#        local $@;
+#        my $rv;
+#        eval { $rv = system(@cmd); };
+#        say "<$@>" if $@;
+#        if ($verbose) {
+#            say $self->get_this_cpanm(), " exited with ", $rv >> 8;
+#        }
+#    }
+#    my $gzipped_build_log = $self->gzip_cpanm_build_log();
+#    say "See gzipped build.log in $gzipped_build_log" if $verbose;
+#
+#    return $gzipped_build_log;
+#}
+
+sub process_modules {
     my ($self, $args) = @_;
-    croak "run_cpanm: Must supply hash ref as argument"
+    croak "process_modules: Must supply hash ref as argument"
         unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
 
     my $verbose = delete $args->{verbose} || '';
@@ -984,7 +1058,7 @@ sub run_cpanm {
         module_file module_list title
     | );
     for my $k (keys %$args) {
-        croak "run_cpanm: '$k' is not a valid element"
+        croak "process_modules: '$k' is not a valid element"
             unless $eligible_args{$k};
     }
 
@@ -994,17 +1068,17 @@ sub run_cpanm {
     $self->{title} = $args->{title};
 
     if (exists $args->{module_file} and exists $args->{module_list}) {
-        croak "run_cpanm: Supply either a file for 'module_file' or an array ref for 'module_list' but not both";
+        croak "process_modules: Supply either a file for 'module_file' or an array ref for 'module_list' but not both";
     }
     if (! (exists $args->{module_file} or exists $args->{module_list}) ) {
-        croak "run_cpanm: Must supply one of 'module_file' or 'module_list'";
+        croak "process_modules: Must supply one of 'module_file' or 'module_list'";
     }
     if ($args->{module_file}) {
-        croak "run_cpanm: Could not locate '$args->{module_file}'"
+        croak "process_modules: Could not locate '$args->{module_file}'"
             unless (-f $args->{module_file});
     }
     if ($args->{module_list}) {
-        croak "run_cpanm: Must supply array ref for 'module_list'"
+        croak "process_modules: Must supply array ref for 'module_list'"
             unless ref($args->{module_list}) eq 'ARRAY';
     }
 
@@ -1027,25 +1101,41 @@ sub run_cpanm {
         close $IN or croak "Could not close $args->{module_file} after reading";
     }
     my $libdir = $self->get_lib_dir();
-    my @cmd = (
-        $self->get_this_perl,
-        "-I$libdir",
-        $self->get_this_cpanm,
-        @modules,
-    );
-    {
-        local $@;
-        my $rv;
-        eval { $rv = system(@cmd); };
-        say "<$@>" if $@;
-        if ($verbose) {
-            say $self->get_this_cpanm(), " exited with ", $rv >> 8;
-        }
-    }
-    my $gzipped_build_log = $self->gzip_cpanm_build_log();
-    say "See gzipped build.log in $gzipped_build_log" if $verbose;
 
-    return $gzipped_build_log;
+    my @buildlogs;
+
+    for my $m (@modules) {
+
+        # Formulate the system call
+        my @cmd = (
+            $self->get_this_perl(),
+            "-I$libdir",
+            $self->get_this_cpanm(),
+            $m,
+        );
+        # Execute the system call
+        {
+            local $@;
+            my $rv;
+            eval { $rv = system(@cmd); };
+            say "<$@>" if $@;
+            say $self->get_this_cpanm(), " exited with ", $rv >> 8
+                if ($verbose);
+        }
+        my $this_buildlog_link =
+            File::Spec->catfile($self->get_cpanm_dir(), 'build.log');
+        croak "$this_buildlog_link is not a symlink" unless (-l $this_buildlog_link);
+        my $this_buildlog = readlink($this_buildlog_link);
+        croak "$this_buildlog not found" unless (-f $this_buildlog);
+        push @buildlogs, $this_buildlog;
+
+        $self->_process_one_report($this_buildlog);
+    }
+
+    # End of loop.
+    # This should lead to 100s of .json files in the analysis_dir.
+    # Next statement will be removed; replaced with something at end to
+    return [ [ @modules ], [ @buildlogs ] ];
 }
 
 sub setup_results_directories {
@@ -1063,13 +1153,30 @@ sub setup_results_directories {
     return scalar(@created);
 }
 
+sub _process_one_report {
+    my ($self, $this_buildlog) = @_;
+    my $reporter = CPAN::cpanminus::reporter::RetainReports->new(
+      force => 1, # ignore mtime check on build.log
+      build_logfile => $this_buildlog,
+      build_dir => $self->get_cpanm_dir(),
+      'ignore-versions' => 1,
+    );
+    croak "Unable to create new reporter for $this_buildlog"
+        unless defined $reporter;
+    no warnings 'redefine';
+    local *CPAN::cpanminus::reporter::RetainReports::_check_cpantesters_config_data = sub { 1 };
+    $reporter->set_report_dir($self->get_analysis_dir());
+    $reporter->run;
+    return 1;
+}
+
 =head2 C<get_buildlogs_dir() get_analysis_dir() get_storage_dir()>
 
 =over 4
 
 =item * Purpose
 
-Once C<run_cpanm()> has been run, three additional methods become available to
+Once C<process_modules()> has been run, three additional methods become available to
 help code determine where output data are located.
 
 =over 4
@@ -1106,7 +1213,7 @@ String holding a path to the named directory.
 
 These directories are only confirmed to exist once internal method
 C<setup_results_directories()> has been executed.  (That method is called
-within C<run_cpanm()>.) Otherwise, these methods will throw exceptions.
+within C<process_modules()>.) Otherwise, these methods will throw exceptions.
 
 =back
 
@@ -1172,72 +1279,72 @@ sub gzip_cpanm_build_log {
     $self->{gzlog} = $gzlog;
 }
 
-=head2 C<analyze_cpanm_build_logs()>
+#=head2 C<analyze_cpanm_build_logs()>
+#
+#=over 4
+#
+#=item * Purpose
+#
+#Parse the F<build.log> created by running C<run_cpanm()>, creating JSON files
+#which log the results of attempting to install each module in the list or
+#file.
+#
+#=item * Arguments
+#
+#    $analysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
+#
+#or
+#
+#    $analysis_dir = $self->analyze_cpanm_build_logs( { verbose => '' } );
+#
+#or
+#
+#    $analysis_dir = $self->analyze_cpanm_build_logs();
+#
+#One optional argument, which must be a hash reference and, if it is, must
+#contain exactly one element, C<verbose>, which must be set to a true or false value.
+#
+#=item * Return Value
+#
+#String holding absolute path to the directory holding F<.log.json> files for a
+#particular run of C<run_cpanm()>.
+#
+#=item * Comment
+#
+#=back
+#
+#=cut
 
-=over 4
-
-=item * Purpose
-
-Parse the F<build.log> created by running C<run_cpanm()>, creating JSON files
-which log the results of attempting to install each module in the list or
-file.
-
-=item * Arguments
-
-    $analysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
-
-or
-
-    $analysis_dir = $self->analyze_cpanm_build_logs( { verbose => '' } );
-
-or
-
-    $analysis_dir = $self->analyze_cpanm_build_logs();
-
-One optional argument, which must be a hash reference and, if it is, must
-contain exactly one element, C<verbose>, which must be set to a true or false value.
-
-=item * Return Value
-
-String holding absolute path to the directory holding F<.log.json> files for a
-particular run of C<run_cpanm()>.
-
-=item * Comment
-
-=back
-
-=cut
-
-sub analyze_cpanm_build_logs {
-    my ($self, $args) = @_;
-
-    croak "analyze_cpanm_build_logs: If argument is supplied, it must be a hash reference"
-        if ($args and ref($args) ne 'HASH');
-
-    my $verbose = $args->{verbose} //= '';
-
-    my $gzlog = $self->{gzlog};
-
-    my ($fh, $working_log) = tempfile();
-    system(qq|gunzip -c $gzlog > $working_log|)
-        and croak "Unable to gunzip $gzlog to $working_log";
-
-    my $reporter = CPAN::cpanminus::reporter::RetainReports->new(
-      force => 1, # ignore mtime check on build.log
-      build_logfile => $working_log,
-      build_dir => $self->get_cpanm_dir,
-      'ignore-versions' => 1,
-    );
-    croak "Unable to create new reporter for $working_log"
-        unless defined $reporter;
-    no warnings 'redefine';
-    local *CPAN::cpanminus::reporter::RetainReports::_check_cpantesters_config_data = sub { 1 };
-    $reporter->set_report_dir($self->{analysis_dir});
-    $reporter->run;
-    say "See results in $self->{analysis_dir}" if $verbose;
-
-    return $self->{analysis_dir};
-}
+#sub analyze_cpanm_build_logs {
+#    my ($self, $args) = @_;
+#
+#    croak "analyze_cpanm_build_logs: If argument is supplied, it must be a hash reference"
+#        if ($args and ref($args) ne 'HASH');
+#
+#    my $verbose = $args->{verbose} //= '';
+#
+#    my $gzlog = $self->{gzlog};
+#
+#    my ($fh, $working_log) = tempfile();
+#    system(qq|gunzip -c $gzlog > $working_log|)
+#        and croak "Unable to gunzip $gzlog to $working_log";
+#
+#    my $reporter = CPAN::cpanminus::reporter::RetainReports->new(
+#      force => 1, # ignore mtime check on build.log
+#      build_logfile => $working_log,
+#      build_dir => $self->get_cpanm_dir,
+#      'ignore-versions' => 1,
+#    );
+#    croak "Unable to create new reporter for $working_log"
+#        unless defined $reporter;
+#    no warnings 'redefine';
+#    local *CPAN::cpanminus::reporter::RetainReports::_check_cpantesters_config_data = sub { 1 };
+#    $reporter->set_report_dir($self->{analysis_dir});
+#    $reporter->run;
+#    say "See results in $self->{analysis_dir}" if $verbose;
+#
+#    return $self->{analysis_dir};
+#}
 
 =head2 C<analyze_json_logs()>
 
