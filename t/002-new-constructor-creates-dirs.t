@@ -68,6 +68,13 @@ my $cwd = cwd();
 
     {
         local $@;
+        eval { $self->prepare_testing_directory(); };
+        like($@, qr/Could\ not\ locate.*?;\ have\ you\ built\ and\ installed\ a\ perl\ executable\?/,
+            "Got exception for premature prepare_testing_directory()");
+    }
+
+    {
+        local $@;
         eval { $self->get_bin_dir(); };
         like($@, qr/bin directory has not yet been defined/,
             "Got exception for premature get_bin_dir()");

@@ -169,8 +169,6 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
     }
 }
 
-#####
-
 {
     note("process_modules(): error conditions");
 
@@ -320,39 +318,37 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
             "The modules I proposed to test were actually tested");
     }
 
-#    note("analyze_json_logs()");
-#
-#    my $rv;
-#    {
-#        local $@;
-#        eval { $rv = $self->analyze_json_logs(); };
-#        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
-#            "analyze_json_logs(): Got expected error message: no defined argument");
-#    }
-#
-#    {
-#        local $@;
-#        eval { $rv = $self->analyze_json_logs( verbose => 1 ); };
-#        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
-#            "analyze_json_logs(): Got expected error message: absence of hash ref");
-#    }
-#
-#    {
-#        local $@;
-#        eval { $rv = $self->analyze_json_logs( { verbose => 1, sep_char => "\t" } ); };
-#        like($@, qr/analyze_json_logs: Currently only pipe \('\|'\) and comma \(','\) are supported as delimiter characters/,
-#            "analyze_json_logs(): Got expected error message: unsupported delimiter");
-#    }
-#
-#    # TODO: Test this method without verbose => 1
-#    my $fpsvfile = $self->analyze_json_logs( { verbose => 1 } );
-#    ok($fpsvfile, "analyze_json_logs() returned true value");
-#    ok(-f $fpsvfile, "Located '$fpsvfile'");
-#
-#    # TODO: Test this method without verbose => 1
-#    my $fcsvfile = $self->analyze_json_logs( { verbose => 1 , sep_char => ',' } );
-#    ok($fcsvfile, "analyze_json_logs() returned true value");
-#    ok(-f $fcsvfile, "Located '$fcsvfile'");
+    note("analyze_json_logs()");
+
+    my $rv;
+    {
+        local $@;
+        eval { $rv = $self->analyze_json_logs(); };
+        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
+            "analyze_json_logs(): Got expected error message: no defined argument");
+    }
+
+    {
+        local $@;
+        eval { $rv = $self->analyze_json_logs( verbose => 1 ); };
+        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
+            "analyze_json_logs(): Got expected error message: absence of hash ref");
+    }
+
+    {
+        local $@;
+        eval { $rv = $self->analyze_json_logs( { verbose => 1, sep_char => "\t" } ); };
+        like($@, qr/analyze_json_logs: Currently only pipe \('\|'\) and comma \(','\) are supported as delimiter characters/,
+            "analyze_json_logs(): Got expected error message: unsupported delimiter");
+    }
+
+    my $fpsvfile = $self->analyze_json_logs( { verbose => 1 } );
+    ok($fpsvfile, "analyze_json_logs() returned true value");
+    ok(-f $fpsvfile, "Located '$fpsvfile'");
+
+    my $fcsvfile = $self->analyze_json_logs( { verbose => 1 , sep_char => ',' } );
+    ok($fcsvfile, "analyze_json_logs() returned true value");
+    ok(-f $fcsvfile, "Located '$fcsvfile'");
 }
 
 done_testing();

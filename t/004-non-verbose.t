@@ -37,16 +37,18 @@ note("Presuming installed perl, testing new()");
 #   prove -vb t/003-prepare-testing-directories.t
 
 my $cwd = cwd;
-
-my $stdout = capture_stdout {
-    system(qq{ $installed_perl -v | head -2 | tail -1 })
-        and croak "Unable to call 'perl -v'";
-};
-chomp $stdout;
-like($stdout,
-    qr/This\sis\sperl\s5,\sversion\s\d\d,\ssubversion\s\d/,
-    "Got 'perl -v' output"
-);
+    
+    {
+    my $stdout = capture_stdout {
+        system(qq{ $installed_perl -v | head -2 | tail -1 })
+            and croak "Unable to call 'perl -v'";
+    };
+    chomp $stdout;
+    like($stdout,
+        qr/This\sis\sperl\s5,\sversion\s\d\d,\ssubversion\s\d/,
+        "Got 'perl -v' output"
+    );
+}
 
 my ($application_dir, $project, $install);
 ($application_dir, $project, $install) =
@@ -137,9 +139,6 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
     note("setup_results_directories()");
 
     my %expected_results_dirs = ();
-    $expected_results_dirs{buildlogs} = {
-        file    => File::Spec->catdir($self->get_results_dir, 'buildlogs'),
-    };
     $expected_results_dirs{analysis} = {
         file    => File::Spec->catdir($self->get_results_dir, 'analysis'),
     };
@@ -170,6 +169,190 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
     }
 }
 
+{
+    note("process_modules(): error conditions");
+
+    {
+        local $@;
+        eval { $self->process_modules( ); };
+        like($@, qr/process_modules: Must supply hash ref as argument/,
+            "Got expected error message: absence of argument");
+    }
+
+    {
+        local $@;
+        eval { $self->process_modules( [ module_file => 'foo', title => 'not-cpan-river' ] ); };
+        like($@, qr/process_modules: Must supply hash ref as argument/,
+            "Got expected error message: absence of hashref");
+    }
+
+    {
+        local $@;
+        my $bad_element = 'foo';
+        eval { $self->process_modules( { $bad_element => 'bar', title => 'not-cpan-river' } ); };
+        like($@, qr/process_modules: '$bad_element' is not a valid element/,
+            "Got expected error message: bad argument");
+    }
+
+    {
+        local $@;
+        eval { $self->process_modules( {
+            module_file => 'foo',
+            module_list => [ 'Foo::Bar', 'Alpha::Beta' ],
+            title => 'not-cpan-river',
+        } ); };
+        like($@, qr/process_modules: Supply either a file for 'module_file' or an array ref for 'module_list' but not both/,
+            "Got expected error message: bad mixture of arguments");
+    }
+
+    {
+        local $@;
+        eval { $self->process_modules( { title => 'not-cpan-river' } ); };
+        like($@, qr/process_modules: Must supply one of 'module_file' or 'module_list'/,
+            "Got expected error message: need one of module_file or module_list");
+    }
+
+    {
+        local $@;
+        my $bad_module_file = 'foo';
+        eval { $self->process_modules( { module_file => $bad_module_file, title => 'not-cpan-river' } ); };
+        like($@, qr/process_modules: Could not locate '$bad_module_file'/,
+            "Got expected error message: module_file not found");
+    }
+
+    {
+        local $@;
+        eval { $self->process_modules( { module_list => "Foo::Bar", title => 'not-cpan-river' } ); };
+        like($@, qr/process_modules: Must supply array ref for 'module_list'/,
+            "Got expected error message: value for module_list not an array ref");
+    }
+
+    {
+        local $@;
+        my $list = [
+            map { File::Spec->catfile($cwd, 't', 'data', 'M', 'ME', 'METATEST', $_) }
+            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
+        ];
+        eval {
+            $self->process_modules( {
+                module_list => $list,
+                title => undef,
+            } );
+        };
+        like($@, qr/Must supply value for 'title' element/,
+            "Got expected error message: value for title is not defined");
+    }
+
+    {
+        local $@;
+        my $list = [
+            map { File::Spec->catfile($cwd, 't', 'data', 'M', 'ME', 'METATEST', $_) }
+            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
+        ];
+        eval {
+            $self->process_modules( {
+                module_list => $list,
+                title => '',
+            } );
+        };
+        like($@, qr/Must supply value for 'title' element/,
+            "Got expected error message: value for title is empty string");
+    }
+}
+
+{
+    {
+        note("process_modules(): Testing via 'module_list'");
+        local $@;
+        my $list = [
+            map { File::Spec->catfile($cwd, 't', 'data', 'M', 'ME', 'METATEST', $_) }
+            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
+        ];
+
+        my $modules_ref;
+        my $stdout = capture_stdout {
+            $modules_ref = $self->process_modules( {
+                module_list => $list,
+                title       => 'one-pass-one-fail',
+            } );
+        };
+        $@ ? fail("process_modules did not operate as intended: $@")
+           : pass("process_modules operated as intended");
+        ok(length $stdout, "STDOUT was captured");
+        my $cpanm = $self->get_this_cpanm();
+        my $count = 2;
+        is(scalar @{$modules_ref}, $count,
+            "Expected $count modules processed, as neither passed as arguments had prerequisites");
+        is_deeply($modules_ref, $list,
+            "The modules I proposed to test were actually tested");
+    }
+
+    {
+        note("process_modules(): Testing via 'module_file'");
+        local $@;
+        my $list = [
+            map { File::Spec->catfile($cwd, 't', 'data', 'M', 'ME', 'METATEST', $_) }
+            ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
+        ];
+        my ($IN, $file) = tempfile('005_files_for_cpanm_XXXXX', UNLINK => 1);
+        open $IN, '>', $file or croak "Could not open $file for writing";
+        say $IN $_ for @{$list};
+        say $IN "# Commented::Out::Module";
+        close $IN or croak "Could not close $file after writing";
+        ok(-f $file, "Located $file for testing");
+
+        my $modules_ref = $self->process_modules( {
+            module_file => $file,
+            title       => 'second-one-pass-one-fail',
+        } );
+        $@ ? fail("process_modules did not operate as intended: $@")
+           : pass("process_modules operated as intended");
+        my $count = 2;
+        is(scalar @{$modules_ref}, $count,
+            "Expected $count modules processed, as neither passed as arguments had prerequisites");
+        is_deeply($modules_ref, $list,
+            "The modules I proposed to test were actually tested");
+    }
+
+    note("analyze_json_logs()");
+
+    my $rv;
+    {
+        local $@;
+        eval { $rv = $self->analyze_json_logs(); };
+        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
+            "analyze_json_logs(): Got expected error message: no defined argument");
+    }
+
+    {
+        local $@;
+        eval { $rv = $self->analyze_json_logs( verbose => 1 ); };
+        like($@, qr/analyze_json_logs: Must supply hash ref as argument/,
+            "analyze_json_logs(): Got expected error message: absence of hash ref");
+    }
+
+    {
+        local $@;
+        eval { $rv = $self->analyze_json_logs( { verbose => 1, sep_char => "\t" } ); };
+        like($@, qr/analyze_json_logs: Currently only pipe \('\|'\) and comma \(','\) are supported as delimiter characters/,
+            "analyze_json_logs(): Got expected error message: unsupported delimiter");
+    }
+
+    my $fpsvfile;
+    $fpsvfile = $self->analyze_json_logs( {} );
+    ok($fpsvfile, "analyze_json_logs() returned true value");
+    ok(-f $fpsvfile, "Located '$fpsvfile'");
+
+    my $fcsvfile = $self->analyze_json_logs( { sep_char => ',' } );
+    ok($fcsvfile, "analyze_json_logs() returned true value");
+    ok(-f $fcsvfile, "Located '$fcsvfile'");
+}
+
+
+done_testing();
+
+
+__END__
 
 {
     note("run_cpanm(): error conditions");
@@ -359,5 +542,3 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
     ok($fcsvfile, "analyze_json_logs() returned true value");
     ok(-f $fcsvfile, "Located '$fcsvfile'");
 }
-
-done_testing();
