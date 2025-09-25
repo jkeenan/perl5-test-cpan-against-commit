@@ -139,9 +139,6 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
     note("setup_results_directories()");
 
     my %expected_results_dirs = ();
-    $expected_results_dirs{buildlogs} = {
-        file    => File::Spec->catdir($self->get_results_dir, 'buildlogs'),
-    };
     $expected_results_dirs{analysis} = {
         file    => File::Spec->catdir($self->get_results_dir, 'analysis'),
     };
@@ -274,9 +271,9 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
             ( qw| Phony-PASS-0.01.tar.gz Phony-FAIL-0.01.tar.gz  | )
         ];
 
-        my ($modules_ref, $buildlogs_ref);
+        my $modules_ref;
         my $stdout = capture_stdout {
-            ($modules_ref, $buildlogs_ref) = $self->process_modules( {
+            $modules_ref = $self->process_modules( {
                 module_list => $list,
                 title       => 'one-pass-one-fail',
                 verbose     => 1,
@@ -293,8 +290,6 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
             "Expected $count modules processed, as neither passed as arguments had prerequisites");
         is_deeply($modules_ref, $list,
             "The modules I proposed to test were actually tested");
-        is(scalar @{$buildlogs_ref}, $count,
-            "With $count modules passed as arguments, expected and got $count buildlogs processed");
     }
 
     {
@@ -311,7 +306,7 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
         close $IN or croak "Could not close $file after writing";
         ok(-f $file, "Located $file for testing");
 
-        my ($modules_ref, $buildlogs_ref) = $self->process_modules( {
+        my $modules_ref = $self->process_modules( {
             module_file => $file,
             title       => 'second-one-pass-one-fail',
             verbose     => 1,
@@ -323,37 +318,8 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
             "Expected $count modules processed, as neither passed as arguments had prerequisites");
         is_deeply($modules_ref, $list,
             "The modules I proposed to test were actually tested");
-        is(scalar @{$buildlogs_ref}, $count,
-            "With $count modules passed as arguments, expected and got $count buildlogs processed");
     }
 
-#    note("analyze_cpanm_build_logs()");
-#
-#    my $analysis_dir;
-#    {
-#        local $@;
-#        eval { $self->analyze_cpanm_build_logs([]); };
-#        like($@, qr/analyze_cpanm_build_logs: If argument is supplied, it must be a hash reference/,
-#            "analyze_cpanm_build_logs: Got expected error message for non-hashref argument");
-#    }
-#
-#    {
-#        local $@;
-#        eval { $analysis_dir = $self->analyze_cpanm_build_logs( [ verbose => 1 ] ); };
-#        like($@, qr/analyze_cpanm_build_logs: If argument is supplied, it must be a hash reference/,
-#            "analyze_cpanm_build_logs(): Got expected error message for lack of hash ref");
-#    }
-#
-#    $stdout = capture_stdout {
-#        $analysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
-#    };
-#    ok(-d $analysis_dir,
-#        "analyze_cpanm_build_logs() returned path to version-specific analysis directory '$analysis_dir'");
-#    like($stdout,
-#        qr/See results in $analysis_dir/s,
-#        "analyze_cpanm_build_logs(): Got expected verbose output: cpanm_dir"
-#    );
-#
 #    note("analyze_json_logs()");
 #
 #    my $rv;

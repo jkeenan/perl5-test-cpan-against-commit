@@ -32,7 +32,7 @@ Test::Against::Commit - Test CPAN modules against Perl dev releases
 
     my $this_cpanm = $self->fetch_cpanm( { verbose => 1 } );
 
-    my $gzipped_build_log = $self->run_cpanm( {
+    my $modules_ref = $self->process_modules( {
         module_file => '/path/to/cpan-river-file.txt',
         title       => 'cpan-river-1000',
         verbose     => 1,
@@ -193,13 +193,12 @@ I<input> data.
 
 A subdirectory of an I<installation directory> which holds the data created by
 running a program using Test::Against::Commit methods.  This directory will in turn
-hold three subdirectories: C<buildlogs/>, C<analysis/> and C<storage/>.
+hold two subdirectories: C<analysis/> and C<storage/>.
 
     /path-to-application/goto-fatal/23ae7f95ea/           # <-- installation directory
     /path-to-application/goto-fatal/23ae7f95ea/testing/   # <-- testing directory
     ...
     /path-to-application/goto-fatal/23ae7f95ea/results/   # <-- results directory
-    /path-to-application/goto-fatal/23ae7f95ea/results/buildlogs/
     /path-to-application/goto-fatal/23ae7f95ea/results/analysis/
     /path-to-application/goto-fatal/23ae7f95ea/results/storage/
 
@@ -899,7 +898,7 @@ Two mutually exclusive interfaces:
 
 =item * Modules provided in a list
 
-    my ($modules_ref, $buildlogs_ref) = $self->process_modules( {
+    my $modules_ref = $self->process_modules( {
         module_list => [ 'DateTime', 'AnyEvent' ],
         title       => 'two-important-libraries',
         verbose     => 1,
@@ -907,7 +906,7 @@ Two mutually exclusive interfaces:
 
 =item * Modules listed in a file
 
-    my ($modules_ref, $buildlogs_ref) = $self->process_modules( {
+    my $modules_ref = $self->process_modules( {
         module_file => '/path/to/cpan-river-file.txt',
         title       => 'cpan-river-1000',
         verbose     => 1,
@@ -950,24 +949,8 @@ provide a Perl-true value to turn it on.  Scope is limited to this method.
 
 =item * Return Value
 
-List of two array references.
-
-=over 4
-
-=item 1 C<$modules>
-
-List of all modules that C<process_modules()> at least attempted to process.
-
-=item 2 C<$buildlogs>
-
-List of absolute paths to all F<cpanm> F<build.log> files created during the
-run.  These files will be F<gzip>-compressed. B<By default they will be
-deleted when this library's work is complete.>  However we will offer the user
-an option to C<analyze_json_logs> -- the last method regularly called when
-using Test-Against-Commit -- to retain C<gzip>ped copies of those build logs
-on disk.
-
-=back
+Single array reference holding a list of all modules that C<process_modules()>
+at least attempted to process.
 
 =item * Comment
 
@@ -979,7 +962,6 @@ I<results_dir> directory discussed above.  These are illustrated as follows:
     /path-to-application/goto-fatal/23ae7f95ea/           # <-- installation directory
     /path-to-application/goto-fatal/23ae7f95ea/testing/   # <-- testing directory
     /path-to-application/goto-fatal/23ae7f95ea/results/   # <-- results directory
-    /path-to-application/goto-fatal/23ae7f95ea/results/buildlogs/   # <-- buildlogs directory
     /path-to-application/goto-fatal/23ae7f95ea/results/analysis/   # <-- analysis directory
     /path-to-application/goto-fatal/23ae7f95ea/results/storage/   # <-- storage directory
 
@@ -1042,8 +1024,6 @@ sub process_modules {
     }
     my $libdir = $self->get_lib_dir();
 
-    my @buildlogs;
-
     for my $m (@modules) {
 
         # Formulate the system call
@@ -1067,7 +1047,6 @@ sub process_modules {
         croak "$this_buildlog_link is not a symlink" unless (-l $this_buildlog_link);
         my $this_buildlog = readlink($this_buildlog_link);
         croak "$this_buildlog not found" unless (-f $this_buildlog);
-        push @buildlogs, $this_buildlog;
 
         $self->process_one_report($this_buildlog);
     }
@@ -1075,24 +1054,17 @@ sub process_modules {
     # End of loop.
     # This should lead to 100s of .json files in the analysis_dir.
 
-    # Is this the point where we should gzip the buildlogs?
-    # Something like gzip -c build.log > buildlogs/sss.log.gz ?
-    # How do we name them? When generated, their basename is always
-    # 'build.log.
-
-    return ( [ @modules ], [ @buildlogs ] );
+    return [ @modules ];
 }
 
 sub setup_results_directories {
     my $self = shift;
     my $results_dir = $self->get_results_dir();
-    my $buildlogs_dir = File::Spec->catdir($results_dir, 'buildlogs');
     my $analysis_dir = File::Spec->catdir($results_dir, 'analysis');
     my $storage_dir = File::Spec->catdir($results_dir, 'storage');
-    my @created = make_path( $buildlogs_dir, $analysis_dir, $storage_dir,
+    my @created = make_path( $analysis_dir, $storage_dir,
         { mode => 0755 });
     for my $dir (@created) { croak "$dir not found" unless -d $dir; }
-    $self->{buildlogs_dir} = $buildlogs_dir;
     $self->{analysis_dir} = $analysis_dir;
     $self->{storage_dir} = $storage_dir;
     return scalar(@created);
@@ -1115,20 +1087,16 @@ sub process_one_report {
     return 1;
 }
 
-=head2 C<get_buildlogs_dir() get_analysis_dir() get_storage_dir()>
+=head2 C<get_analysis_dir() get_storage_dir()>
 
 =over 4
 
 =item * Purpose
 
-Once C<process_modules()> has been run, three additional methods become available to
+Once C<process_modules()> has been run, two additional methods become available to
 help code determine where output data are located.
 
 =over 4
-
-=item * buildlogs directory (I<buildlogs_dir>)
-
-The directory underneath the I<results directory> holding F<cpanm> F<build.log> files.
 
 =item * analysis directory (I<analysis_dir>)
 
@@ -1143,10 +1111,6 @@ The directory underneath the I<results directory> holding final output results.
 =back
 
 =item * Arguments
-
-    $buildlogs_dir = $self->get_buildlogs_dir();
-
-    $analysis_dir = $self->get_analysis_dir();
 
     $storage_dir = $self->get_storage_dir();
 
@@ -1163,16 +1127,6 @@ within C<process_modules()>.) Otherwise, these methods will throw exceptions.
 =back
 
 =cut
-
-sub get_buildlogs_dir {
-    my $self = shift;
-    if (! defined $self->{buildlogs_dir}) {
-        croak "buildlogs directory has not yet been defined";
-    }
-    else {
-        return $self->{buildlogs_dir};
-    }
-}
 
 sub get_analysis_dir {
     my $self = shift;
@@ -1193,103 +1147,6 @@ sub get_storage_dir {
         return $self->{storage_dir};
     }
 }
-
-#sub gzip_cpanm_build_log {
-#    my ($self) = @_;
-#    my $build_log_link = File::Spec->catfile($self->get_cpanm_dir, 'build.log');
-#    croak "Did not find symlink for build.log at $build_log_link"
-#        unless (-l $build_log_link);
-#    my $real_log = readlink($build_log_link);
-#
-#    my $pattern = qr/^$self->{title}\.$self->{install}\.build\.log\.gz$/;
-#    $self->{gzlog_pattern} = $pattern;
-#    opendir my $DIRH, $self->{buildlogs_dir} or croak "Unable to open buildlogs_dir for reading";
-#    my @files_found = grep { -f $_ and $_ =~ m/$pattern/ } readdir $DIRH;
-#    closedir $DIRH or croak "Unable to close buildlogs_dir after reading";
-#
-#    # It's not clear that we should die if there already exist log files in
-#    # buildlogs_dir.
-#    #croak "There are already log files in '$self->{buildlogs_dir}'"if scalar(@files_found);
-#
-#    my $gzipped_build_log = join('.' => (
-#        $self->{title},
-#        $self->{install},
-#        'build',
-#        'log',
-#        'gz'
-#    ) );
-#    my $gzlog = File::Spec->catfile($self->{buildlogs_dir}, $gzipped_build_log);
-#    system(qq| gzip -c $real_log > $gzlog |)
-#        and croak "Unable to gzip $real_log to $gzlog";
-#    $self->{gzlog} = $gzlog;
-#}
-
-#=head2 C<analyze_cpanm_build_logs()>
-#
-#=over 4
-#
-#=item * Purpose
-#
-#Parse the F<build.log> created by running C<run_cpanm()>, creating JSON files
-#which log the results of attempting to install each module in the list or
-#file.
-#
-#=item * Arguments
-#
-#    $analysis_dir = $self->analyze_cpanm_build_logs( { verbose => 1 } );
-#
-#or
-#
-#    $analysis_dir = $self->analyze_cpanm_build_logs( { verbose => '' } );
-#
-#or
-#
-#    $analysis_dir = $self->analyze_cpanm_build_logs();
-#
-#One optional argument, which must be a hash reference and, if it is, must
-#contain exactly one element, C<verbose>, which must be set to a true or false value.
-#
-#=item * Return Value
-#
-#String holding absolute path to the directory holding F<.log.json> files for a
-#particular run of C<run_cpanm()>.
-#
-#=item * Comment
-#
-#=back
-#
-#=cut
-
-#sub analyze_cpanm_build_logs {
-#    my ($self, $args) = @_;
-#
-#    croak "analyze_cpanm_build_logs: If argument is supplied, it must be a hash reference"
-#        if ($args and ref($args) ne 'HASH');
-#
-#    my $verbose = $args->{verbose} //= '';
-#
-#    my $gzlog = $self->{gzlog};
-#
-#    my ($fh, $working_log) = tempfile();
-#    system(qq|gunzip -c $gzlog > $working_log|)
-#        and croak "Unable to gunzip $gzlog to $working_log";
-#
-#    my $reporter = CPAN::cpanminus::reporter::RetainReports->new(
-#      force => 1, # ignore mtime check on build.log
-#      build_logfile => $working_log,
-#      build_dir => $self->get_cpanm_dir,
-#      'ignore-versions' => 1,
-#    );
-#    croak "Unable to create new reporter for $working_log"
-#        unless defined $reporter;
-#    no warnings 'redefine';
-#    local *CPAN::cpanminus::reporter::RetainReports::_check_cpantesters_config_data = sub { 1 };
-#    $reporter->set_report_dir($self->{analysis_dir});
-#    $reporter->run;
-#    say "See results in $self->{analysis_dir}" if $verbose;
-#
-#    return $self->{analysis_dir};
-#}
 
 =head2 C<analyze_json_logs()>
 
@@ -1475,36 +1332,6 @@ sub _create_csv_file {
             if $args->{verbose};
     return $fcdvfile;
 }
-
-#sub gzip_cpanm_build_log {
-#    my ($self) = @_;
-#    my $build_log_link = File::Spec->catfile($self->get_cpanm_dir, 'build.log');
-#    croak "Did not find symlink for build.log at $build_log_link"
-#        unless (-l $build_log_link);
-#    my $real_log = readlink($build_log_link);
-#
-#    my $pattern = qr/^$self->{title}\.$self->{install}\.build\.log\.gz$/;
-#    $self->{gzlog_pattern} = $pattern;
-#    opendir my $DIRH, $self->{buildlogs_dir} or croak "Unable to open buildlogs_dir for reading";
-#    my @files_found = grep { -f $_ and $_ =~ m/$pattern/ } readdir $DIRH;
-#    closedir $DIRH or croak "Unable to close buildlogs_dir after reading";
-#
-#    # It's not clear that we should die if there already exist log files in
-#    # buildlogs_dir.
-#    #croak "There are already log files in '$self->{buildlogs_dir}'"if scalar(@files_found);
-#
-#    my $gzipped_build_log = join('.' => (
-#        $self->{title},
-#        $self->{install},
-#        'build',
-#        'log',
-#        'gz'
-#    ) );
-#    my $gzlog = File::Spec->catfile($self->{buildlogs_dir}, $gzipped_build_log);
-#    system(qq| gzip -c $real_log > $gzlog |)
-#        and croak "Unable to gzip $real_log to $gzlog";
-#    $self->{gzlog} = $gzlog;
-#}
 
 1;
 
