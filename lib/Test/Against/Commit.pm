@@ -945,12 +945,21 @@ files.  Required.
 Extra information provided on STDOUT.  Optional; defaults to being off;
 provide a Perl-true value to turn it on.  Scope is limited to this method.
 
+=item * C<dryrun>
+
+Optional; defaults to being off.  Program runs only as far as determining
+modules which the user will attempt to load, prints number of modules being
+attempted, then C<process_modules()> returns an undefined value (which would
+prevent subsequent methods from running correctly).
+
 =back
 
 =item * Return Value
 
-Single array reference holding a list of all modules that C<process_modules()>
-at least attempted to process.
+Default: Single array reference holding a list of all modules that
+C<process_modules()> at least attempted to process.
+
+With true-value for C<dryrun>: Undefined value.
 
 =item * Comment
 
@@ -975,6 +984,7 @@ sub process_modules {
         unless ( ( defined $args ) and ( ref($args) eq 'HASH' ) );
 
     my $verbose = delete $args->{verbose} || '';
+    my $dryrun = delete $args->{dryrun} || '';
     my %eligible_args = map { $_ => 1 } ( qw|
         module_file module_list title
     | );
@@ -1022,6 +1032,14 @@ sub process_modules {
         }
         close $IN or croak "Could not close $args->{module_file} after reading";
     }
+    if ($dryrun) {
+        say "Planning to process ", scalar(@modules), " modules";
+        if ($verbose) {
+            dd(\@modules);
+        }
+        return;
+    }
+
     my $libdir = $self->get_lib_dir();
 
     for my $m (@modules) {
