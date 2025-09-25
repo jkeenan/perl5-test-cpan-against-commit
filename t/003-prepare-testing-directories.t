@@ -307,6 +307,7 @@ is($this_cpanm_dir, $expected_cpanm_dir, ".cpanm directory located as $this_cpan
         my ($IN, $file) = tempfile('005_files_for_cpanm_XXXXX', UNLINK => 1);
         open $IN, '>', $file or croak "Could not open $file for writing";
         say $IN $_ for @{$list};
+        say $IN "# Commented::Out::Module";
         close $IN or croak "Could not close $file after writing";
         ok(-f $file, "Located $file for testing");
 
