@@ -1,8 +1,8 @@
-# .gitignore for Test-Against-Dev
+# .gitignore for Test-Against-Commit
 /MANIFEST.bak
 /Makefile
 /Makefile.old
-/Test-Against-Dev-*.tar.gz
+/Test-Against-Commit-*.tar.gz
 /MYMETA.yml
 /MYMETA.json*
 /blib

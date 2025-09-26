@@ -1,7 +1,7 @@
 package Test::Against::Commit;
 use strict;
 use 5.14.0;
-our $VERSION = '0.15';
+our $VERSION = '0.16';
 # core modules
 use Archive::Tar;
 use Carp;
