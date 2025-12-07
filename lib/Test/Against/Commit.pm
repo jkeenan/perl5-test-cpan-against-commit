@@ -18,7 +18,7 @@ use Text::CSV_XS;
 
 =head1 NAME
 
-Test::Against::Commit - Test CPAN modules against Perl dev releases
+Test::Against::Commit - Test CPAN modules against Perl dev releases, branches or individual commits
 
 =head1 SYNOPSIS
 
